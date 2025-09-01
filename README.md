@@ -6,3 +6,5 @@ This is our codebase for our ECE 461 project
 * [Noddie Mgbodille](https://github.com/nmgbodil)
 
 * [Will Ott](https://github.com/willott29).
+
+* [Trevor Ju](https://github.com/teajuw).
