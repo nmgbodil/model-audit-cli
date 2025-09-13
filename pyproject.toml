@@ -9,6 +9,15 @@ line_length = 88
 strict = true
 files = ["src", "tests"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "unit: fast, isolated tests",
+  "integration: hits external systems (db, services, network)",
+  "e2e: full end-to-end flows",
+  "perf: performance/benchmark tests"
+]
+
 [project]
 name = "model-audit-cli"
 version = "0.1.0"

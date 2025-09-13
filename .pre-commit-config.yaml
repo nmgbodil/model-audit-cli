@@ -25,3 +25,5 @@ repos:
       - id: mypy
         pass_filenames: false
         args: [--config-file=pyproject.toml]
+        additional_dependencies:
+          - pytest>=7.4
