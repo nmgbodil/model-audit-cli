@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [ main ]
   push:
-    branches: [ main ]
-  workflow_dispatch:              # ← add this
+    branches: [ '**' ]
+  workflow_dispatch:
     inputs:
       reason:
         description: "Why you're running it"
@@ -21,6 +21,7 @@ concurrency:
 jobs:
   lint:
     name: Lint (black/isort/flake8)
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,6 +57,7 @@ jobs:
   
   typecheck:
     name: Type check (mypy)
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -85,8 +87,9 @@ jobs:
       - name: Run mypy
         run: mypy src tests
   
-  tests:
+  unit-tests:
     name: Unit tests + coverage
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [ lint, typecheck ]
     strategy:
