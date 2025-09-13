@@ -1,5 +1,20 @@
+coverage==7.10.6
+flake8==7.3.0
+flake8-docstrings==1.7.0
 iniconfig==2.1.0
+isort==6.0.1
+mccabe==0.7.0
+-e git+ssh://git@github.com/nmgbodil/461-repo.git@d4c447306f600302b7c97bcfb675c30a10dca979#egg=model_audit_cli
+mypy==1.18.1
+mypy_extensions==1.1.0
 packaging==25.0
+pathspec==0.12.1
 pluggy==1.6.0
+pycodestyle==2.14.0
+pydocstyle==6.3.0
+pyflakes==3.4.0
 Pygments==2.19.2
 pytest==8.4.2
+pytest-cov==7.0.0
+snowballstemmer==3.0.1
+typing_extensions==4.15.0
