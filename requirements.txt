@@ -10,7 +10,7 @@ identify==2.6.14
 iniconfig==2.1.0
 isort==6.0.1
 mccabe==0.7.0
--e git+ssh://git@github.com/nmgbodil/461-repo.git@98bf0de93a52d1b17b53c2b8d7758c96c832beef#egg=model_audit_cli
+-e git+https://github.com/nmgbodil/model-audit-cli.git@e58da655f6ff2ec0f729b03ad9ae63e75b00c96c#egg=model_audit_cli
 mypy==1.18.1
 mypy_extensions==1.1.0
 nodeenv==1.9.1
