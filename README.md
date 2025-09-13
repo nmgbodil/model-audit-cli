@@ -1,6 +1,6 @@
-# 461-repo
+# Model-Audit-CLI
 
-This is the codebase for our ECE 461 project
+This is the codebase for our CLI tool for auditing AI models
 
 ## Contributors
 * [Noddie Mgbodille](https://github.com/nmgbodil)
