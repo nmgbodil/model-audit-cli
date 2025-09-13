@@ -7,7 +7,8 @@ line_length = 88
 
 [tool.mypy]
 strict = true
-files = ["src", "tests"]
+files = ["src/model_audit_cli", "tests"]
+mypy_path = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
