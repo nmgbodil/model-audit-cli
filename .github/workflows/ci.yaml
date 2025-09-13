@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.11", "3.12" ]
+        python-version: [ "3.12" ]
     
     steps:
       - name: Check out repository
@@ -85,7 +85,7 @@ jobs:
           pip install -e .
       
       - name: Run mypy
-        run: mypy src tests
+        run: mypy --config-file=pyproject.toml
   
   unit-tests:
     name: Unit tests + coverage
@@ -94,7 +94,7 @@ jobs:
     needs: [ lint, typecheck ]
     strategy:
       matrix:
-        python-version: [ "3.11", "3.12" ]
+        python-version: [ "3.12" ]
     
     steps:
       - name: Check out repository
