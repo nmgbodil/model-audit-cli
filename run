@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+# ./run install | ./run test | ./run URL_FILE
+
+import sys, subprocess, json
+from pathlib import Path
+
+# ---- helpers ----
+def cmd_install() -> int:
+"""
+Install project dependencies.
+Input: textfile with requirements
+Output: exit code 0 if install succeeded, raises error otherwise
+"""
+    req = Path("requirements.txt")
+    if req.exists():
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "-r", str(req)])
+    else:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "pytest", "pytest-cov"])
+    print("install ok")
+    return 0
+
+
+def _run_pytest() -> int:
+"""
+Run pytest with coverage and store XML reports.
+Input: None 
+Output: int - pytest return code (0 = all tests passed, nonzero = failure).
+"""
+    Path("tests").mkdir(parents=True, exist_ok=True)
+    junit = "tests/_junit.xml"
+    cov   = "tests/_coverage.xml"
+    cmd = [sys.executable, "-m", "pytest", f"--junitxml={junit}", "--cov=src", f"--cov-report=xml:{cov}", "-q"]
+    print("[test] running:", " ".join(cmd))
+    return subprocess.run(cmd, check=False).returncode
+
+
+def _print_summary(pytest_rc: int) -> None:
+"""
+Parse JUnit and coverage XML reports and print a summary.
+Input: pytest_rc (int)
+Output: None
+"""
+    import xml.etree.ElementTree as ET
+    junit = Path("tests/_junit.xml"); cov = Path("tests/_coverage.xml")
+    total = passed = 0; pct = 0
+    try:
+        root = ET.parse(junit).getroot()
+        suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite")) or list(root)
+        total = sum(int(s.attrib.get("tests", 0)) for s in suites)
+        failed = sum(int(s.attrib.get("failures", 0)) + int(s.attrib.get("errors", 0)) for s in suites)
+        passed = max(0, total - failed)
+    except Exception:
+        print("0/0 test cases passed. 0% line coverage achieved."); sys.exit(1)
+    try:
+        croot = ET.parse(cov).getroot()
+        if croot.attrib.get("line-rate") is not None:
+            pct = round(float(croot.attrib["line-rate"]) * 100)
+    except Exception:
+        pass
+    print(f"{passed}/{total} test cases passed. {pct}% line coverage achieved.")
+    sys.exit(0 if (pytest_rc == 0 and cov.exists()) else 1)
+
+
+def is_model_url(u: str) -> bool:
+"""
+Check if a URL looks like a Hugging Face model URL.
+Input: URL string
+Output: bool - True if URL is a model, False otherwise.
+"""
+    return ("huggingface.co" in u) and ("/datasets/" not in u)
+
+
+def cmd_urls_file(url_file: str) -> int:
+"""
+Read a URL file and print NDJSON lines for each model URL.
+Input: url_file (str) 
+Output: one JSON line per model URL.
+"""
+    p = Path(url_file)
+    if not p.exists():
+        print(f"File not found: {url_file}", file=sys.stderr); return 2
+    for line in p.read_text(encoding="utf-8").splitlines():
+        u = line.strip()
+        if not u or u.startswith("#"): 
+            continue
+        if not is_model_url(u):
+            continue
+        rec = {
+            "name": u,
+            "category": "MODEL",
+            "ramp_up_time": 1.0, "ramp_up_time_latency": 0,
+            "bus_factor": 1.0, "bus_factor_latency": 0,
+            "correctness": 1.0, "correctness_latency": 0,
+            "documentation": 1.0, "documentation_latency": 0,
+            "license_score": 1.0, "license_score_latency": 0,
+        }
+        print(json.dumps(rec))
+    return 0
+
+# ---- simple parser ----
+if len(sys.argv) < 2:
+    print("Usage: ./run install | ./run test | ./run <url_file>", file=sys.stderr); sys.exit(2)
+
+arg = sys.argv[1]
+if arg == "install":
+    sys.exit(cmd_install())
+elif arg == "test":
+    rc = _run_pytest()
+    _print_summary(rc) 
+else:
+    sys.exit(cmd_urls_file(arg))
