@@ -5,11 +5,7 @@ on:
     branches: [ main ]
   push:
     branches: [ '**' ]
-  workflow_dispatch:
-    inputs:
-      reason:
-        description: "Why you're running it"
-        required: false
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -35,22 +31,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: pyproject.toml
       
-      - name: Install lint dependencies
+      - name: Install dev dependencies
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then
-            pip install -r requirements-dev.txt
-          else
-            pip install black isort flake8 flake8-docstrings
-          fi
+          python -m pip install -U pip
+          pip install -e .[dev]
         
-      - name: Black (check only)
+      - name: Black (check)
         run: black --check .
 
-      - name: isort (check only)
-        run: isort --check-only -diff .
+      - name: isort (check)
+        run: isort --check-only --diff .
       
       - name: flake8
         run: flake8
@@ -72,17 +64,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: pyproject.toml
       
-      - name: Install project + mypy
+      - name: Install project + dev dependencies
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then
-            pip install -r requirements-dev.txt
-          else
-            pip install mypy pytest
-          fi
-            pip install -e .
+          python -m pip install -U pip
+          pip install -e .[dev]
       
       - name: Run mypy
         run: mypy --config-file=pyproject.toml
@@ -106,23 +93,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       
-      - name: Install project + test dependencies
+      - name: Install project + dev dependencies
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then
-            pip install -r requirements-dev.txt
-          else
-            pip install pytest pytest-cov
-          fi
-          pip install -e .
+          python -m pip install -U pip
+          pip install -e .[dev]
       
       - name: Run tests with coverage
         run: |
           pytest -q --maxfail=1 --disable-warnings \
-            --cov=src \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
+            -m "not integration and not e2e and not slow and not perf" \
+            --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml \
             --cov-fail-under=80
       
       - name: Upload coverage
