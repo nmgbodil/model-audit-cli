@@ -1,4 +1,4 @@
-exclude: ^(venv/|\.git/|__pycache__/|build/|dist/|\.mypy_cache/)$
+exclude: ^(venv/|\.git/|__pycache__/|build/|dist/|\.mypy_cache/|run)$
 
 repos:
   - repo: https://github.com/psf/black
