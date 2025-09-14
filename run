@@ -6,6 +6,11 @@ from pathlib import Path
 
 # ---- helpers ----
 def cmd_install() -> int:
+"""
+Install project dependencies.
+Input: textfile with requirements
+Output: exit code 0 if install succeeded, raises error otherwise
+"""
     req = Path("requirements.txt")
     if req.exists():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "-r", str(req)])
@@ -14,7 +19,13 @@ def cmd_install() -> int:
     print("install ok")
     return 0
 
+
 def _run_pytest() -> int:
+"""
+Run pytest with coverage and store XML reports.
+Input: None 
+Output: int - pytest return code (0 = all tests passed, nonzero = failure).
+"""
     Path("tests").mkdir(parents=True, exist_ok=True)
     junit = "tests/_junit.xml"
     cov   = "tests/_coverage.xml"
@@ -22,7 +33,13 @@ def _run_pytest() -> int:
     print("[test] running:", " ".join(cmd))
     return subprocess.run(cmd, check=False).returncode
 
+
 def _print_summary(pytest_rc: int) -> None:
+"""
+Parse JUnit and coverage XML reports and print a summary.
+Input: pytest_rc (int)
+Output: None
+"""
     import xml.etree.ElementTree as ET
     junit = Path("tests/_junit.xml"); cov = Path("tests/_coverage.xml")
     total = passed = 0; pct = 0
@@ -43,10 +60,22 @@ def _print_summary(pytest_rc: int) -> None:
     print(f"{passed}/{total} test cases passed. {pct}% line coverage achieved.")
     sys.exit(0 if (pytest_rc == 0 and cov.exists()) else 1)
 
+
 def is_model_url(u: str) -> bool:
+"""
+Check if a URL looks like a Hugging Face model URL.
+Input: URL string
+Output: bool - True if URL is a model, False otherwise.
+"""
     return ("huggingface.co" in u) and ("/datasets/" not in u)
 
+
 def cmd_urls_file(url_file: str) -> int:
+"""
+Read a URL file and print NDJSON lines for each model URL.
+Input: url_file (str) 
+Output: one JSON line per model URL.
+"""
     p = Path(url_file)
     if not p.exists():
         print(f"File not found: {url_file}", file=sys.stderr); return 2
@@ -68,7 +97,7 @@ def cmd_urls_file(url_file: str) -> int:
         print(json.dumps(rec))
     return 0
 
-# ---- simple “parser” ----
+# ---- simple parser ----
 if len(sys.argv) < 2:
     print("Usage: ./run install | ./run test | ./run <url_file>", file=sys.stderr); sys.exit(2)
 
