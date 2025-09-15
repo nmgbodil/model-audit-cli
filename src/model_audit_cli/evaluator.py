@@ -1,8 +1,12 @@
-import sys, json
+import json
+import sys
 from pathlib import Path
-from src.metrics_engine import run_metrics, flatten_to_ndjson
+
+from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
+
 
 def main(path: str) -> None:
+    """Dummy CLI."""
     urls = Path(path).read_text().splitlines()
     for url in urls:
         if not url.strip() or url.startswith("#"):
@@ -11,6 +15,7 @@ def main(path: str) -> None:
         results = run_metrics({"url": url})
         record.update(flatten_to_ndjson(results))
         print(json.dumps(record))
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

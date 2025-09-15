@@ -1,6 +1,8 @@
-from src.metrics_engine import run_metrics, flatten_to_ndjson
+from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
 
-def test_engine_constant_output():
+
+def test_engine_constant_output() -> None:
+    """Dummy test engine."""
     ctx = {"url": "https://huggingface.co/google/gemma-3-270m/tree/main"}
     results = run_metrics(ctx, include=["ramp_up_time", "bus_factor"])
     out = flatten_to_ndjson(results)
