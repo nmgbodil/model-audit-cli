@@ -1,10 +1,8 @@
-import pathlib
-
 from model_audit_cli.models import Metrics, SizeScore
 
 # where to write the golden file
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-GOLDEN_FILE = REPO_ROOT / "tests" / "golden" / "metrics.ndjson"
+# REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+GOLDEN_FILE = "tests/golden/metrics.ndjson"
 
 # sample "golden" object
 example = Metrics(
@@ -36,10 +34,10 @@ example = Metrics(
 )
 
 # ensure golden directory exists
-GOLDEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+# GOLDEN_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # write as NDJSON (one line per object)
-with GOLDEN_FILE.open("w") as f:
+with open(GOLDEN_FILE, "w") as f:
     f.write(example.model_dump_json() + "\n")
 
 print(f"Golden file written to {GOLDEN_FILE}")
