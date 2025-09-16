@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 class SizeScore(BaseModel):
     """Calculates the score for size metric."""
+
     raspberry_pi: float = Field(..., ge=0, le=1)
     jetson_nano: float = Field(..., ge=0, le=1)
     desktop_pc: float = Field(..., ge=0, le=1)
@@ -13,6 +14,7 @@ class SizeScore(BaseModel):
 
 class Metrics(BaseModel):
     """Base model for the metrics calculations."""
+
     name: str
     category: Annotated[
         str, StringConstraints(pattern="^(MODEL|DATASET|CODE)$")
