@@ -4,8 +4,16 @@ from pathlib import Path
 
 from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
 
+#logging
+from model_audit_cli.logger import setup_logging
+import logging
 
 def main(path: str) -> None:
+
+    #logging
+    setup_logging()
+    logging.getLogger(__name__).info("reading URLs from %s", path)
+
     """Dummy CLI."""
     urls = Path(path).read_text().splitlines()
     for url in urls:
