@@ -1,14 +1,70 @@
 # Model-Audit-CLI
 
-This is the codebase for our CLI tool for auditing AI models
+A lightweight CLI for managing and evaluating Hugging Face models: fetch metadata, run local checks, and compute metrics with reproducible outputs and CI-friendly reports.
 
-Make all contributions through branches or forks.
+## Dependency Management
+---
 
 To install all dependencies run the following command
 
 ```
-pip install -e .[dev]
+pip install -e ".[dev]"
 ```
+---
+## Contributing & CI Requirements
+
+Our CI runs on **Python 3.11 and 3.12** and enforces these gates. Please run them locally before pushing or opening a PR.
+
+1) **Formatting (Black)**  
+Check only (no edits):
+```bash
+black --check .
+```
+Auto-format:
+```bash
+black .
+```
+
+2) **Import Sorting (isort)**  
+Check only:
+```bash
+isort --check-only --diff .
+```
+Auto-fix:
+```bash
+isort .
+```
+
+3) **Linting (Flake8 + Docstrings)**
+```bash
+flake8 .
+```
+
+4) **Type Checks (mypy)**
+```bash
+mypy
+```
+
+5) **Tests + Coverage (unit tests)**  
+CI expects all tests to pass and **≥ 80%** code coverage over `src/`.
+
+Optional HTML report (human-friendly):
+```bash
+pytest --cov=src --cov-report=html:tests/_htmlcov
+# open tests/_htmlcov/index.html
+```
+
+---
+
+## Pre-commit (recommended)
+
+We use **pre-commit** so formatting/linting/type checks run automatically on commit.
+
+**One-time setup:**
+```bash
+pip install -e ".[dev]"
+pre-commit install
+pre-commit run --all-files   # baseline the repo once
 
 THe phase-1 `run` script that serves as the CLI entrypoint for the project.  
 It currently supports three commands required by the specification:
