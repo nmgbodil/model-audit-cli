@@ -1,0 +1,126 @@
+import time
+from typing import Any
+
+import requests
+
+from model_audit_cli.errors import SCHEMA_ERROR, AppError, http_error_from_hf_response
+
+
+class HFClient:
+    """A client for interacting with the Hugging Face API.
+
+    Attributes:
+        base_url (str): The base URL for the Hugging Face API.
+    """
+
+    def __init__(self, base_url: str = "https://huggingface.co"):
+        """Initialize the HFClient with a base URL.
+
+        Args:
+            base_url (str): The base URL for the Hugging Face API.
+                Defaults to "https://huggingface.co".
+        """
+        self.base_url = base_url.strip("/")
+
+    def _get_json(self, path: str, retries: int = 0, backoff: int = 2) -> Any:
+        """Perform a GET request to the specified path and return the JSON response.
+
+        Args:
+            path (str): The API endpoint path.
+            retries (Optional[int]): The number of retry attempts for failed requests.
+                Defaults to 0.
+            backoff (Optional[int]): The backoff multiplier for retry delays.
+                Defaults to 2.
+
+        Returns:
+            Any: The JSON response from the API.
+
+        Raises:
+            AppError: If the response is not successful or the retries are exhausted.
+        """
+        url = self.base_url + path
+        i = 0
+
+        while i <= retries:
+            try:
+                response = requests.get(url)
+                data = response.json()
+                response.raise_for_status()
+                i = retries + 1
+            except requests.exceptions.HTTPError as e:
+                print(e)
+                if response.status_code >= 500:
+                    print(
+                        f"Status Code {response.status_code}: Internal Server Error: "
+                        "Try again later"
+                    )
+                elif response.status_code == 429:
+                    print("Status Code 429: Rate Limit Error")
+                    if "retry-after" in data:
+                        wait_time = data["retry-after"]
+                    else:
+                        wait_time = backoff * 2**retries
+                    time.sleep(wait_time)
+                elif response.status_code == 401:
+                    i = retries
+                i += 1
+
+        if not response.ok:
+            raise http_error_from_hf_response(
+                url=url, status=response.status_code, body=response.text
+            )
+
+        return data
+
+    def get_model_metadata(self, repo_id: str) -> dict[str, Any]:
+        """Retrieve metadata for a specific model from the Hugging Face API.
+
+        Args:
+            repo_id (str): The repository ID of the model.
+
+        Returns:
+            dict[str, Any]: The metadata of the model.
+
+        Raises:
+            AppError: If the response data is not a dictionary or if the request fails.
+        """
+        path = f"/api/models/{repo_id}"
+        data = self._get_json(path)
+        if not isinstance(data, dict):
+            raise AppError(
+                code=SCHEMA_ERROR,
+                message="Unexpected shape for model metadata.",
+                context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
+            )
+        return data
+
+    def get_dataset_metadata(self, repo_id: str) -> dict[str, Any]:
+        """Retrieve metadata for a specific dataset from the Hugging Face API.
+
+        Args:
+            repo_id (str): The repository ID of the dataset.
+
+        Returns:
+            dict[str, Any]: The metadata of the dataset.
+
+        Raises:
+            AppError: If the response data is not a dictionary or if the request fails.
+        """
+        path = f"/api/datasets/{repo_id}"
+        data = self._get_json(path)
+        if not isinstance(data, dict):
+            raise AppError(
+                code=SCHEMA_ERROR,
+                message="Unexpected shape for model metadata.",
+                context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
+            )
+        return data
+
+
+if __name__ == "__main__":
+    client = HFClient()
+    data = client.get_model_metadata("google/gemma-3-270m/")
+    import json
+
+    with open("sample_model_meta.json", "w") as f:
+        json.dump(data, f)
