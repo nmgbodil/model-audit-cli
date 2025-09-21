@@ -39,38 +39,37 @@ class HFClient:
             AppError: If the response is not successful or the retries are exhausted.
         """
         url = self.base_url + path
-        i = 0
 
-        while i <= retries:
+        for attempt in range(retries + 1):
             try:
                 response = requests.get(url)
-                data = response.json()
                 response.raise_for_status()
-                i = retries + 1
+                return response.json()
             except requests.exceptions.HTTPError as e:
                 print(e)
-                if response.status_code >= 500:
-                    print(
-                        f"Status Code {response.status_code}: Internal Server Error: "
-                        "Try again later"
-                    )
-                elif response.status_code == 429:
-                    print("Status Code 429: Rate Limit Error")
-                    if "retry-after" in data:
-                        wait_time = data["retry-after"]
-                    else:
-                        wait_time = backoff * 2**retries
+                if response.status_code >= 500 and attempt < retries:
+                    wait_time = backoff * 2**retries
                     time.sleep(wait_time)
-                elif response.status_code == 401:
-                    i = retries
-                i += 1
+                    continue
 
-        if not response.ok:
-            raise http_error_from_hf_response(
-                url=url, status=response.status_code, body=response.text
-            )
+                if response.status_code == 429 and attempt < retries:
+                    wait_time = response.headers.get(
+                        "Retry-After", backoff * 2**retries
+                    )
+                    time.sleep(wait_time)
+                    continue
+                break
+            except requests.exceptions.RequestException as e:
+                print(e)
+                if attempt < retries:
+                    wait_time = backoff * 2**retries
+                    time.sleep(wait_time)
+                else:
+                    break
 
-        return data
+        raise http_error_from_hf_response(
+            url=url, status=response.status_code, body=response.text
+        )
 
     def get_model_metadata(self, repo_id: str) -> dict[str, Any]:
         """Retrieve metadata for a specific model from the Hugging Face API.
