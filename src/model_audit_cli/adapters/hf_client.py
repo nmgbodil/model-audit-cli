@@ -22,7 +22,7 @@ class HFClient:
         """
         self.base_url = base_url.strip("/")
 
-    def _get_json(self, path: str, retries: int = 0, backoff: int = 2) -> Any:
+    def _get_json(self, path: str, retries: int, backoff: float = 2.0) -> Any:
         """Perform a GET request to the specified path and return the JSON response.
 
         Args:
@@ -48,13 +48,13 @@ class HFClient:
             except requests.exceptions.HTTPError as e:
                 print(e)
                 if response.status_code >= 500 and attempt < retries:
-                    wait_time = backoff * 2**retries
+                    wait_time = backoff * 2**attempt
                     time.sleep(wait_time)
                     continue
 
                 if response.status_code == 429 and attempt < retries:
                     wait_time = response.headers.get(
-                        "Retry-After", backoff * 2**retries
+                        "Retry-After", backoff * 2**attempt
                     )
                     time.sleep(float(wait_time))
                     continue
@@ -62,7 +62,7 @@ class HFClient:
             except requests.exceptions.RequestException as e:
                 print(e)
                 if attempt < retries:
-                    wait_time = backoff * 2**retries
+                    wait_time = backoff * 2**attempt
                     time.sleep(wait_time)
                 else:
                     break
@@ -71,7 +71,7 @@ class HFClient:
             url=url, status=response.status_code, body=response.text
         )
 
-    def get_model_metadata(self, repo_id: str) -> dict[str, Any]:
+    def get_model_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
         """Retrieve metadata for a specific model from the Hugging Face API.
 
         Args:
@@ -84,7 +84,7 @@ class HFClient:
             AppError: If the response data is not a dictionary or if the request fails.
         """
         path = f"/api/models/{repo_id}"
-        data = self._get_json(path)
+        data = self._get_json(path, retries)
         if not isinstance(data, dict):
             raise AppError(
                 code=SCHEMA_ERROR,
@@ -93,7 +93,7 @@ class HFClient:
             )
         return data
 
-    def get_dataset_metadata(self, repo_id: str) -> dict[str, Any]:
+    def get_dataset_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
         """Retrieve metadata for a specific dataset from the Hugging Face API.
 
         Args:
@@ -106,7 +106,7 @@ class HFClient:
             AppError: If the response data is not a dictionary or if the request fails.
         """
         path = f"/api/datasets/{repo_id}"
-        data = self._get_json(path)
+        data = self._get_json(path, retries)
         if not isinstance(data, dict):
             raise AppError(
                 code=SCHEMA_ERROR,
@@ -114,12 +114,3 @@ class HFClient:
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
         return data
-
-
-if __name__ == "__main__":
-    client = HFClient()
-    data = client.get_model_metadata("google/gemma-3-270m/")
-    import json
-
-    with open("sample_model_meta.json", "w") as f:
-        json.dump(data, f)

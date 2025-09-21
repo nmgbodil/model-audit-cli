@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from utils import make_response
 
 from model_audit_cli.adapters.hf_client import HFClient
@@ -52,6 +53,103 @@ class TestGetModelMetadata:
             print(hf_client.get_model_metadata("test-repo"))
 
         mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
+
+    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
+    def test_retry_on_5xx_then_succeed(
+        self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
+    ) -> None:
+        """Test retry logic on 5xx errors and eventual success."""
+        # Mock responses: 500 twice, then 200
+        mock_get.side_effect = [
+            make_response(status=500, text="Internal Server Error"),
+            make_response(status=500, text="Internal Server Error"),
+            make_response(status=200, body={"name": "test-model"}),
+        ]
+
+        # Call the method
+        result = hf_client.get_model_metadata("test-repo", 2)
+
+        # Assertions
+        assert result == {"name": "test-model"}
+        assert mock_get.call_count == 3
+        mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
+        mock_sleep.assert_any_call(
+            4
+        )  # Ensure sleep was called with increased backoff time
+
+    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
+    def test_429_with_retry_after_header(
+        self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
+    ) -> None:
+        """Test retry logic on 429 errors with Retry-After header."""
+        # Mock responses: 429 with Retry-After, then 200
+        mock_get.side_effect = [
+            make_response(
+                status=429, text="Rate Limit Exceeded", headers={"Retry-After": "1"}
+            ),
+            make_response(status=200, body={"name": "test-model"}),
+        ]
+
+        # Call the method
+        result = hf_client.get_model_metadata("test-repo", 1)
+
+        # Assertions
+        assert result == {"name": "test-model"}
+        assert mock_get.call_count == 2
+        mock_sleep.assert_called_once_with(
+            1
+        )  # Ensure sleep was called with Retry-After value
+
+    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
+    def test_429_without_retry_after_header(
+        self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
+    ) -> None:
+        """Test retry logic on 429 errors without Retry-After header."""
+        # Mock responses: 429 twice, then 200
+        mock_get.side_effect = [
+            make_response(status=429, text="Rate Limit Exceeded"),
+            make_response(status=429, text="Rate Limit Exceeded"),
+            make_response(status=200, body={"name": "test-model"}),
+        ]
+
+        # Call the method
+        result = hf_client.get_model_metadata("test-repo", 2)
+
+        # Assertions
+        assert result == {"name": "test-model"}
+        assert mock_get.call_count == 3
+        assert mock_sleep.call_count == 2  # Ensure sleep was called for retries
+        mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
+        mock_sleep.assert_any_call(
+            4
+        )  # Ensure sleep was called with increased backoff time
+
+    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
+    def test_request_exception_handling(
+        self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
+    ) -> None:
+        """Test handling of RequestException during retries."""
+        # Mock responses: raise RequestException twice, then succeed
+        mock_get.side_effect = [
+            requests.exceptions.RequestException("Connection error"),
+            requests.exceptions.RequestException("Connection error"),
+            make_response(status=200, body={"name": "test-model"}),
+        ]
+
+        # Call the method
+        result = hf_client.get_model_metadata("test-repo", 2)
+
+        # Assertions
+        assert result == {"name": "test-model"}
+        assert mock_get.call_count == 3
+        mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
+        mock_sleep.assert_any_call(
+            4
+        )  # Ensure sleep was called with increased backoff time
 
 
 class TestGetDatasetMetadata:

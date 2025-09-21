@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Mapping, Optional
 
 import requests
 
@@ -9,6 +9,7 @@ def make_response(
     body: Any | None = None,
     text: str = "",
     url: str = "https://huggingface.co/api/models/test-repo",
+    headers: Optional[Mapping[str, Any]] = None,
 ) -> requests.Response:
     """Create a mock HTTP response object with the given status, body, text, and URL.
 
@@ -29,4 +30,7 @@ def make_response(
         response.headers["Content-Type"] = "application/json"
     else:
         response._content = text.encode()
+
+    if headers:
+        response.headers.update(headers)
     return response
