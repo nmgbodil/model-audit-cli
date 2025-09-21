@@ -56,7 +56,7 @@ class HFClient:
                     wait_time = response.headers.get(
                         "Retry-After", backoff * 2**retries
                     )
-                    time.sleep(wait_time)
+                    time.sleep(float(wait_time))
                     continue
                 break
             except requests.exceptions.RequestException as e:
