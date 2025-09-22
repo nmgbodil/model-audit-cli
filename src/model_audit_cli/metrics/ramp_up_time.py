@@ -1,10 +1,11 @@
 import time
+from typing import Any, Mapping
 
-from .types import MetricResult, register
+from model_audit_cli.metrics.types import MetricResult, register
 
 
 @register("ramp_up_time")
-def ramp_up_time(model: dict) -> MetricResult:
+def ramp_up_time(model: Mapping[str, Any]) -> MetricResult:
     """Compute ramp-up time score.
 
     Args:

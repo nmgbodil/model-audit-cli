@@ -20,7 +20,7 @@ class MetricResult:
     name: str
     value: MetricValue
     latency_ms: float
-    details: Mapping[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 MetricFunction = Callable[[Mapping[str, Any]], MetricResult]

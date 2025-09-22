@@ -1,19 +1,23 @@
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
 
 
 def main(path: str) -> None:
-    """Dummy CLI."""
+    """Dummy CLI that runs metrics on each URL in a file and prints NDJSON output."""
     urls = Path(path).read_text().splitlines()
     for url in urls:
         if not url.strip() or url.startswith("#"):
             continue
-        record = {"name": url, "category": "MODEL"}
+
+        record: dict[str, Any] = {"name": url, "category": "MODEL"}
+
         results = run_metrics({"url": url})
         record.update(flatten_to_ndjson(results))
+
         print(json.dumps(record))
 
 

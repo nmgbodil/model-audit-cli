@@ -1,81 +1,84 @@
+import os
 import time
-from typing import Any, Dict, Iterable, Mapping, Union
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, Mapping, Union
+
+from model_audit_cli.metrics.ramp_up_time import ramp_up_time
 
 from .metrics.types import METRICS, MetricFunction, MetricResult, MetricValue
 
+FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL") == "1"
+
+METRIC_FUNCS = {
+    "ramp_up_time": ramp_up_time,
+}
+
 
 def _clamp(x: float) -> float:
-    """Keep numbers inside [0, 1]."""
-    if x < 0.0:
-        return 0.0
-    if x > 1.0:
-        return 1.0
-    return x
+    """Clamp a number to [0, 1]."""
+    return max(0.0, min(1.0, x))
 
 
-def _safe_run(name: str, fn: MetricFunction, model: Mapping[str, Any]) -> MetricResult:
-    """Run one metric.
-
-    Input: name, fn, model
-    Output: MetricResult. If it chrashes - return 0.0 with an error note.
-    """
-    t0 = time.perf_counter()
+def _safe_run(
+    metric: str, func: MetricFunction, model: Mapping[str, Any]
+) -> MetricResult:
+    """Run one metric safely and return a MetricResult."""
+    start = time.perf_counter()
     try:
-        r = fn(model)
-        value: Union[float, Dict[str, float]]
+        r = func(model)
+
         if isinstance(r.value, (int, float)):
-            value = _clamp(float(r.value))
+            value: Union[float, Dict[str, float]] = _clamp(float(r.value))
         elif isinstance(r.value, Mapping):
             value = {str(k): _clamp(float(v)) for k, v in r.value.items()}
         else:
             value = 0.0
-        return MetricResult(name, value, float(r.latency_ms), r.details or {})
+
+        return MetricResult(metric, value, float(r.latency_ms), r.details or {})
+
     except Exception as e:
-        dt_ms = (time.perf_counter() - t0) * 1000.0
-        return MetricResult(name, 0.0, dt_ms, {"error": f"{type(e).__name__}: {e}"})
+        latency = (time.perf_counter() - start) * 1000.0
+        return MetricResult(metric, 0.0, latency, {"error": f"{type(e).__name__}: {e}"})
 
 
 def run_metrics(
-    model: Mapping[str, Any],
-    include: Iterable[str] | None = None,
+    model: Mapping[str, Any], include: set[str] | None = None
 ) -> Dict[str, MetricResult]:
-    """Sequentially run every registered metric.
+    """Run metrics on a url.
 
-    Args:
-        model: The model object or identifier to evaluate.
-
-    Returns:
-        dict[str, MetricResult]: Mapping of metric names to their results.
+    Uses parallel execution unless FORCE_SEQUENTIAL=1.
     """
-    if "url" in model and not any(
-        k in model for k in ("readme_text", "example_files", "likes")
-    ):
-        model = {
-            **model,
-            "readme_text": "x" * 6000,
-            "example_files": ["demo.ipynb"],
-            "likes": 1000,
-        }
     results: Dict[str, MetricResult] = {}
-    names = set(include) if include is not None else None
-    for name, fn in list(METRICS.items()):
-        if names is not None and name not in names:
-            continue
-        results[name] = _safe_run(name, fn, model)
+    metric_names = include if include else set(METRICS.keys())
+
+    if FORCE_SEQUENTIAL:
+        for metric, func in METRICS.items():
+            if metric in metric_names:
+                results[metric] = _safe_run(metric, func, model)
+
+    else:
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(_safe_run, metric, func, model): metric
+                for metric, func in METRIC_FUNCS.items()
+                if metric in metric_names
+            }
+            for future in as_completed(futures):
+                metric = futures[future]
+                try:
+                    results[metric] = future.result()
+                except Exception as e:
+                    results[metric] = MetricResult(metric, 0.0, 0.0, {"error": str(e)})
+
     return results
 
 
 def flatten_to_ndjson(
     results: Mapping[str, MetricResult],
 ) -> Dict[str, Union[MetricValue, int]]:
-    """Convert MetricResults into the NDJSON fields.
-
-    Each metric produces:
-      <metric>: float or {str->float}
-      <metric>_latency: int (ms)
-    """
+    """Convert MetricResults into NDJSON fields (<metric>, <metric>_latency)."""
     out: Dict[str, Union[MetricValue, int]] = {}
-    for name, r in results.items():
-        out[name] = r.value
-        out[f"{name}_latency"] = int(round(r.latency_ms))
+    for metric, r in results.items():
+        out[metric] = r.value
+        out[f"{metric}_latency"] = int(round(r.latency_ms))
     return out
