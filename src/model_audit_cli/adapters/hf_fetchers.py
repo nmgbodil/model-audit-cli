@@ -27,6 +27,8 @@ DATASET_ALLOW = [
     "data/*",  # optional: small samples/processed shards if needed
 ]
 
+SPACE_ALLOW = ["app.*", "requirements*.txt", "runtime.txt", "*.py", "README.*"]
+
 MAX_FILE_BYTES = 256 * 1024
 
 
@@ -152,3 +154,21 @@ class HFDatasetFetcher(_BaseSnapshotFetcher):
                 Defaults to True.
         """
         super().__init__(repo_id, "model", revision, DATASET_ALLOW, use_shared_cache)
+
+
+class HFSpaceFetcher(_BaseSnapshotFetcher):
+    """Fetcher for Hugging Face Space repositories."""
+
+    def __init__(
+        self, repo_id: str, revision: Optional[str], use_shared_cache: bool = True
+    ) -> None:
+        """Initialize the space fetcher with repository details.
+
+        Args:
+            repo_id (str): The ID of the space repository to fetch.
+            revision (Optional[str]):
+                The specific revision of the space repository to fetch.
+            use_shared_cache (bool): Whether to use a shared cache for the snapshot.
+                Defaults to True.
+        """
+        super().__init__(repo_id, "space", revision, SPACE_ALLOW, use_shared_cache)
