@@ -9,7 +9,16 @@ from huggingface_hub import snapshot_download
 
 from model_audit_cli.adapters.repo_view import RepoView
 
-MODEL_ALLOW = ["README.md", "README.*", "config.json", "model_index.json"]
+MODEL_ALLOW = [
+    "README.md",
+    "README.*",
+    "config.json",
+    "model_index.json",
+    "tokenizer.*",
+    "vocab.*",
+    "pytorch_model.bin",
+    "tf_model.h5",
+]
 
 DATASET_ALLOW = [
     "README.md",
