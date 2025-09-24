@@ -20,15 +20,6 @@ MODEL_ALLOW = [
     "tf_model.h5",
 ]
 
-DATASET_ALLOW = [
-    "README.md",
-    "README.*",
-    "dataset_info.json",  # primary structured metadata
-    "data/*",  # optional: small samples/processed shards if needed
-]
-
-SPACE_ALLOW = ["app.*", "requirements*.txt", "runtime.txt", "*.py", "README.*"]
-
 MAX_FILE_BYTES = 256 * 1024
 
 
@@ -83,10 +74,7 @@ class _BaseSnapshotFetcher(AbstractContextManager[RepoView]):
         )
         self._local_path = local_path
 
-        # Remove any files that exceed the maximum file size
-        for p in local_path.rglob("*"):
-            if p.is_file() and p.stat().st_size > MAX_FILE_BYTES:
-                p.unlink(missing_ok=True)
+        self._remove_large_files(local_path)
 
         return RepoView(local_path)
 
@@ -109,15 +97,22 @@ class _BaseSnapshotFetcher(AbstractContextManager[RepoView]):
         Returns:
             None
         """
-        if exc_value:
-            raise exc_value
-
         try:
             if self._tmp_dir:
                 self._tmp_dir.cleanup()
         finally:
             self._tmp_dir = None
             self._local_path = None
+
+    def _remove_large_files(self, local_path: Path) -> None:
+        """Remove files exceeding the maximum allowed size from the repository snapshot.
+
+        Args:
+            local_path (Path): The path to the local repository snapshot.
+        """
+        for p in local_path.rglob("*"):
+            if p.is_file() and p.stat().st_size > MAX_FILE_BYTES:
+                p.unlink(missing_ok=True)
 
 
 class HFModelFetcher(_BaseSnapshotFetcher):
@@ -136,39 +131,3 @@ class HFModelFetcher(_BaseSnapshotFetcher):
                 Defaults to True.
         """
         super().__init__(repo_id, "model", revision, MODEL_ALLOW, use_shared_cache)
-
-
-class HFDatasetFetcher(_BaseSnapshotFetcher):
-    """Fetcher for Hugging Face dataset repositories."""
-
-    def __init__(
-        self, repo_id: str, revision: Optional[str], use_shared_cache: bool = True
-    ) -> None:
-        """Initialize the dataset fetcher with repository details.
-
-        Args:
-            repo_id (str): The ID of the dataset repository to fetch.
-            revision (Optional[str]):
-                The specific revision of the dataset repository to fetch.
-            use_shared_cache (bool): Whether to use a shared cache for the snapshot.
-                Defaults to True.
-        """
-        super().__init__(repo_id, "model", revision, DATASET_ALLOW, use_shared_cache)
-
-
-class HFSpaceFetcher(_BaseSnapshotFetcher):
-    """Fetcher for Hugging Face Space repositories."""
-
-    def __init__(
-        self, repo_id: str, revision: Optional[str], use_shared_cache: bool = True
-    ) -> None:
-        """Initialize the space fetcher with repository details.
-
-        Args:
-            repo_id (str): The ID of the space repository to fetch.
-            revision (Optional[str]):
-                The specific revision of the space repository to fetch.
-            use_shared_cache (bool): Whether to use a shared cache for the snapshot.
-                Defaults to True.
-        """
-        super().__init__(repo_id, "space", revision, SPACE_ALLOW, use_shared_cache)
