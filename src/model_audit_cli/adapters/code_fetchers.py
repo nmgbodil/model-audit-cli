@@ -15,7 +15,6 @@ from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.errors import (
     HTTP_ERROR,
     NETWORK_ERROR,
-    NOT_FOUND,
     UNSUPPORTED_URL,
     AppError,
 )
@@ -166,6 +165,8 @@ def _get_github_default_branch(
         headers["Authorization"] = f"Bearer {token}"
     response = requests.get(url, headers=headers)
     # NOTE: Error handling needs to be done
+    if not response.ok:
+        return "main"
     default_branch: str = response.json().get("default_branch", "main")
     return default_branch
 
@@ -188,7 +189,7 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
             token (Optional[str]): A GitLab personal access token for authentication.
         """
         self.ns_name = ns_name
-        self.ref = ref or "main"
+        self.ref = ref or _get_gitlab_default_branch(ns_name)
         self.token = token
         self._tmp_dir: Optional[tempfile.TemporaryDirectory[str]] = None
         self._root: Optional[Path] = None
@@ -223,6 +224,18 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
             self._root = None
 
 
+def _get_gitlab_default_branch(project_path: str, token: Optional[str] = None) -> str:
+    # Only needed if you want the name; GitLab archive works fine without sha
+    url = f"https://gitlab.com/api/v4/projects/{quote_plus(project_path)}"
+    headers = {"PRIVATE-TOKEN": token} if token else {}
+    response = requests.get(url, headers=headers)
+    # NOTE: Error handling needs to be done
+    if not response.ok:
+        return "main"
+    default_branch: str = response.json().get("default_branch", "main")
+    return default_branch
+
+
 def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
     try:
         response = requests.get(url, headers=headers, allow_redirects=True)
@@ -230,7 +243,7 @@ def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
     except requests.exceptions.HTTPError:
         if response.status_code == 404:
             raise AppError(
-                NOT_FOUND,
+                HTTP_ERROR,
                 "Specified repo, branch or tag does not exist",
                 context={"url": url},
             )
