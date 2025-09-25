@@ -4,7 +4,7 @@ from typing import Any, Mapping, Optional
 import requests
 
 
-def make_response(
+def make_hf_client_response(
     status: int,
     body: Any | None = None,
     text: str = "",
