@@ -18,7 +18,10 @@ class HFDatasetFetcher(_BaseSnapshotFetcher):
     """Fetcher for Hugging Face dataset repositories."""
 
     def __init__(
-        self, repo_id: str, revision: Optional[str], use_shared_cache: bool = True
+        self,
+        repo_id: str,
+        revision: Optional[str] = None,
+        use_shared_cache: bool = True,
     ) -> None:
         """Initialize the dataset fetcher with repository details.
 
@@ -29,4 +32,12 @@ class HFDatasetFetcher(_BaseSnapshotFetcher):
             use_shared_cache (bool): Whether to use a shared cache for the snapshot.
                 Defaults to True.
         """
-        super().__init__(repo_id, "model", revision, DATASET_ALLOW, use_shared_cache)
+        super().__init__(repo_id, "dataset", revision, DATASET_ALLOW, use_shared_cache)
+
+
+if __name__ == "__main__":
+    url = "https://huggingface.co/datasets/bookcorpus/bookcorpus"
+    with HFDatasetFetcher("bookcorpus/bookcorpus") as dataset:
+        data = dataset.read_text("README.md")
+
+    print(data)
