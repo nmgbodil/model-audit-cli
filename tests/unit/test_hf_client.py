@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from utils import make_hf_client_response
+from utils import make_response
 
 from model_audit_cli.adapters.hf_client import HFClient
 from model_audit_cli.errors import SCHEMA_ERROR, AppError
@@ -21,9 +21,7 @@ class TestGetModelMetadata:
     def test_success(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test successful retrieval of model metadata."""
         # Mock response
-        mock_get.return_value = make_hf_client_response(
-            status=200, body={"name": "test-model"}
-        )
+        mock_get.return_value = make_response(status=200, body={"name": "test-model"})
 
         # Call the method
         result = hf_client.get_model_metadata("test-repo")
@@ -36,9 +34,7 @@ class TestGetModelMetadata:
     def test_schema_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test schema error when retrieving model metadata."""
         # Mock response
-        mock_get.return_value = make_hf_client_response(
-            status=200, body=["unexpected", "list"]
-        )
+        mock_get.return_value = make_response(status=200, body=["unexpected", "list"])
 
         # Call the method and assert exception
         with pytest.raises(AppError) as exc_info:
@@ -50,7 +46,7 @@ class TestGetModelMetadata:
     @patch("model_audit_cli.adapters.hf_client.requests.get")
     def test_http_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test HTTP error when retrieving model metadata."""
-        mock_get.return_value = make_hf_client_response(404, text="Not Found")
+        mock_get.return_value = make_response(404, text="Not Found")
 
         # Call the method and assert exception
         with pytest.raises(AppError):
@@ -66,9 +62,9 @@ class TestGetModelMetadata:
         """Test retry logic on 5xx errors and eventual success."""
         # Mock responses: 500 twice, then 200
         mock_get.side_effect = [
-            make_hf_client_response(status=500, text="Internal Server Error"),
-            make_hf_client_response(status=500, text="Internal Server Error"),
-            make_hf_client_response(status=200, body={"name": "test-model"}),
+            make_response(status=500, text="Internal Server Error"),
+            make_response(status=500, text="Internal Server Error"),
+            make_response(status=200, body={"name": "test-model"}),
         ]
 
         # Call the method
@@ -90,10 +86,10 @@ class TestGetModelMetadata:
         """Test retry logic on 429 errors with Retry-After header."""
         # Mock responses: 429 with Retry-After, then 200
         mock_get.side_effect = [
-            make_hf_client_response(
+            make_response(
                 status=429, text="Rate Limit Exceeded", headers={"Retry-After": "1"}
             ),
-            make_hf_client_response(status=200, body={"name": "test-model"}),
+            make_response(status=200, body={"name": "test-model"}),
         ]
 
         # Call the method
@@ -114,9 +110,9 @@ class TestGetModelMetadata:
         """Test retry logic on 429 errors without Retry-After header."""
         # Mock responses: 429 twice, then 200
         mock_get.side_effect = [
-            make_hf_client_response(status=429, text="Rate Limit Exceeded"),
-            make_hf_client_response(status=429, text="Rate Limit Exceeded"),
-            make_hf_client_response(status=200, body={"name": "test-model"}),
+            make_response(status=429, text="Rate Limit Exceeded"),
+            make_response(status=429, text="Rate Limit Exceeded"),
+            make_response(status=200, body={"name": "test-model"}),
         ]
 
         # Call the method
@@ -141,7 +137,7 @@ class TestGetModelMetadata:
         mock_get.side_effect = [
             requests.exceptions.RequestException("Connection error"),
             requests.exceptions.RequestException("Connection error"),
-            make_hf_client_response(status=200, body={"name": "test-model"}),
+            make_response(status=200, body={"name": "test-model"}),
         ]
 
         # Call the method
@@ -163,9 +159,7 @@ class TestGetDatasetMetadata:
     def test_success(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test successful retrieval of dataset metadata."""
         # Mock response
-        mock_get.return_value = make_hf_client_response(
-            status=200, body={"name": "test-dataset"}
-        )
+        mock_get.return_value = make_response(status=200, body={"name": "test-dataset"})
 
         # Call the method
         result = hf_client.get_dataset_metadata("test-repo")
@@ -180,9 +174,7 @@ class TestGetDatasetMetadata:
     def test_schema_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test schema error when retrieving dataset metadata."""
         # Mock response
-        mock_get.return_value = make_hf_client_response(
-            status=200, body=["unexpected", "list"]
-        )
+        mock_get.return_value = make_response(status=200, body=["unexpected", "list"])
 
         # Call the method and assert exception
         with pytest.raises(AppError) as exc_info:
@@ -197,9 +189,7 @@ class TestGetDatasetMetadata:
     def test_http_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test HTTP error when retrieving dataset metadata."""
         # Mock response
-        mock_get.return_value = make_hf_client_response(
-            status=500, text="Internal Server Error"
-        )
+        mock_get.return_value = make_response(status=500, text="Internal Server Error")
 
         # Call the method and assert exception
         with pytest.raises(AppError):
