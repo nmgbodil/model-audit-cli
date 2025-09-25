@@ -6,22 +6,29 @@ import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any, ContextManager, Mapping, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 import requests
-from dulwich import porcelain
 
 from model_audit_cli.adapters.model_fetchers import _BaseSnapshotFetcher
 from model_audit_cli.adapters.repo_view import RepoView
-from model_audit_cli.errors import HTTP_ERROR, NETWORK_ERROR, UNSUPPORTED_URL, AppError
+from model_audit_cli.errors import (
+    HTTP_ERROR,
+    NETWORK_ERROR,
+    NOT_FOUND,
+    UNSUPPORTED_URL,
+    AppError,
+)
 
 SPACE_ALLOW = ["app.*", "requirements*.txt", "runtime.txt", "*.py", "README.*"]
+
+
+# NOTE: Might want to explore fast file retrieval especially for large files
 
 
 def open_codebase(
     url: str,
     *,
-    need_history: bool = False,
     ref: Optional[str] = None,
     token: Optional[str] = None,
 ) -> ContextManager[RepoView]:
@@ -34,7 +41,6 @@ def open_codebase(
 
     Args:
         url (str): The URL of the codebase to open.
-        need_history (bool): Whether to fetch the full commit history.
             Defaults to False.
         ref (Optional[str]): The branch, tag, or commit to fetch. Defaults to None.
         token (Optional[str]): An optional authentication token for private
@@ -52,11 +58,12 @@ def open_codebase(
     if host.endswith("github.com"):
         owner, repo = parts[0], parts[1]
         revision = _extract_rev(parts) or ref
-        return _GitHubCodeFetcher(owner, repo, revision, need_history, token)
+        return _GitHubCodeFetcher(owner, repo, revision, token)
     if host.endswith("gitlab.com"):
-        ns_name = parts[0]
+        print(parts)
+        ns_name = "/".join(parts)
         revision = _extract_rev(parts) or ref
-        return _GitLabCodeFetcher(ns_name, revision, need_history, token)
+        return _GitLabCodeFetcher(ns_name, revision, token)
 
     raise AppError(UNSUPPORTED_URL, "Unsupported codebase url link")
 
@@ -96,19 +103,13 @@ class _HFSpaceFetcher(_BaseSnapshotFetcher):
 
 
 class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
-    """A context manager for fetching and extracting GitHub repositories as tarballs.
-
-    This class supports two modes of operation:
-    1. Full repository clone with commit history.
-    2. Fast tarball download for file-only access.
-    """
+    """A context manager for fetching and extracting GitHub repositories as tarballs."""
 
     def __init__(
         self,
         owner: str,
         repo: str,
         ref: Optional[str],
-        need_history: bool,
         token: Optional[str] = None,
     ) -> None:
         """Initialize the GitHubCodeFetcher with repository details.
@@ -119,13 +120,11 @@ class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
             ref (Optional[str]): The branch, tag, or commit to fetch.
                 Defaults to "main".
             token (Optional[str]): A GitHub personal access token for authentication.
-            need_history (bool): Whether to fetch the full commit history.
         """
         self.owner = owner
         self.repo = repo
-        self.ref = ref or "main"
+        self.ref = ref or _get_github_default_branch(owner, repo, token)
         self.token = token
-        self.need_history = need_history
         self._tmp_dir: Optional[tempfile.TemporaryDirectory[str]] = None
         self._root: Optional[Path] = None
 
@@ -133,18 +132,6 @@ class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
         self._tmp_dir = tempfile.TemporaryDirectory(prefix="mac")
         root = Path(self._tmp_dir.name)
 
-        # If we need commit history and actual repo
-        if self.need_history:
-            dest = root / "repo"
-            porcelain.clone(
-                f"https://github.com/{self.owner}/{self.repo}.git", target=str(dest)
-            )
-            if self.ref not in {"main", "master", "HEAD"}:
-                porcelain.checkout(str(dest), self.ref)
-            self._root = dest
-            return RepoView(dest)
-
-        # If we need files only: fast tarball download
         url = (
             f"https://api.github.com/repos/{self.owner}/{self.repo}/tarball/{self.ref}"
         )
@@ -170,19 +157,26 @@ class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
             self._root = None
 
 
-class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
-    """A context manager for fetching and extracting GitLab repositories as a tar.gz.
+def _get_github_default_branch(
+    owner: str, repo: str, token: Optional[str] = None
+) -> str:
+    url = f"https://api.github.com/repos/{owner}/{repo}"
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    response = requests.get(url, headers=headers)
+    # NOTE: Error handling needs to be done
+    default_branch: str = response.json().get("default_branch", "main")
+    return default_branch
 
-    This class supports two modes of operation:
-    1. Full repository clone with commit history.
-    2. Fast tarball download for file-only access.
-    """
+
+class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
+    """A context manager for fetching and extracting GitLab repositories as a tar.gz."""
 
     def __init__(
         self,
         ns_name: str,
         ref: Optional[str],
-        need_history: bool,
         token: Optional[str] = None,
     ) -> None:
         """Initialize the GitLabCodeFetcher with repository details.
@@ -191,13 +185,11 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
             ns_name (str): The namespace of the GitHub repository.
             ref (Optional[str]): The branch, tag, or commit to fetch.
                 Defaults to "main".
-            token (Optional[str]): A GitHub personal access token for authentication.
-            need_history (bool): Whether to fetch the full commit history.
+            token (Optional[str]): A GitLab personal access token for authentication.
         """
         self.ns_name = ns_name
         self.ref = ref or "main"
         self.token = token
-        self.need_history = need_history
         self._tmp_dir: Optional[tempfile.TemporaryDirectory[str]] = None
         self._root: Optional[Path] = None
 
@@ -205,19 +197,9 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
         self._tmp_dir = tempfile.TemporaryDirectory(prefix="mac_")
         root = Path(self._tmp_dir.name)
 
-        # If we need commit history and actual repo
-        if self.need_history:
-            dest = root / "repo"
-            porcelain.clone(f"https://gitlab.com/{self.ns_name}.git", target=str(dest))
-            if self.ref not in {"main", "master", "HEAD"}:
-                porcelain.checkout(str(dest), self.ref)
-            self._root = dest
-            return RepoView(dest)
-
-        # If we need files only: fast tarball download
         url = (
-            f"https://gitlab.com/{self.ns_name}/-/archive/{self.ref}"
-            + f"/{self.ns_name.split('/')[-1]}-{self.ref}.tar.gz"
+            f"https://gitlab.com/api/v4/projects/{quote_plus(self.ns_name)}"
+            f"/repository/archive.tar.gz?sha={self.ref}"
         )
         headers = {}
         if self.token:
@@ -243,18 +225,24 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
 
 def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, allow_redirects=True)
         response.raise_for_status()
     except requests.exceptions.HTTPError:
+        if response.status_code == 404:
+            raise AppError(
+                NOT_FOUND,
+                "Specified repo, branch or tag does not exist",
+                context={"url": url},
+            )
         raise AppError(
             HTTP_ERROR,
-            f"GitHub returned HTTP {response.status_code} for tarball.",
+            f"HTTP {response.status_code} for tarball.",
             context={"url": url},
         )
     except requests.RequestException as e:
         raise AppError(
             NETWORK_ERROR,
-            "Network error fetching GitHub tarball.",
+            "Network error fetching tarball.",
             cause=e,
             context={"url": url},
         )
@@ -269,8 +257,11 @@ def _top_dir(root: Path) -> Path:
 
 
 if __name__ == "__main__":
-    url = "https://github.com/nmgbodil/the-hub/tree/CSP-3-Email-verification"
-    with open_codebase(url, need_history=True) as code:
-        text = code.read_text("auth.py")
+    url = "https://gitlab.com/gitlab-org/gitlab-foss"
+    url = "https://github.com/google-research/bert"
+    # url = "https://github.com/nmgbodil/the-hub"
+    # url = "https://gitlab.com/Saminyy/hello-world"
+    with open_codebase(url) as code:
+        text = code.read_text("README.md")
 
     print(text)
