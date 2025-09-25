@@ -59,7 +59,6 @@ def open_codebase(
         revision = _extract_rev(parts) or ref
         return _GitHubCodeFetcher(owner, repo, revision, token)
     if host.endswith("gitlab.com"):
-        print(parts)
         ns_name = "/".join(parts)
         revision = _extract_rev(parts) or ref
         return _GitLabCodeFetcher(ns_name, revision, token)
