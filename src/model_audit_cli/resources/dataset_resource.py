@@ -13,9 +13,9 @@ class DataResource(_BaseResource):
         If the URL is a Hugging Face dataset, the repository ID is extracted.
         """
         super().__init__(url=url)
-        self._client = HFClient()
         if self._is_hf_dataset_url():
             self._repo_id = self._hf_id_from_url()
+            self._client = HFClient()
 
     def _is_hf_dataset_url(self) -> bool:
         """Check if the URL corresponds to a Hugging Face dataset.
