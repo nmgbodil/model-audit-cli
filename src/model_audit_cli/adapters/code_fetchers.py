@@ -261,7 +261,10 @@ def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
         )
 
     with tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz") as tf:
-        tf.extractall(dest)
+        try:
+            tf.extractall(dest, filter="data")
+        except TypeError:
+            tf.extractall(dest)
 
 
 def _top_dir(root: Path) -> Path:
