@@ -270,14 +270,3 @@ def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
 def _top_dir(root: Path) -> Path:
     dirs = [p for p in root.iterdir() if p.is_dir()]
     return dirs[0] if dirs else root
-
-
-if __name__ == "__main__":
-    url = "https://gitlab.com/gitlab-org/gitlab-foss"
-    url = "https://github.com/google-research/bert"
-    # url = "https://github.com/nmgbodil/the-hub"
-    # url = "https://gitlab.com/Saminyy/hello-world"
-    with open_codebase(url) as code:
-        text = code.read_text("README.md")
-
-    print(text)

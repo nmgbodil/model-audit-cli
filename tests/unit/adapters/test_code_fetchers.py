@@ -4,10 +4,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from utils import build_tgz, make_response
 
 from model_audit_cli.adapters.code_fetchers import open_codebase
-from model_audit_cli.errors import UNSUPPORTED_URL, AppError
+from model_audit_cli.errors import NETWORK_ERROR, UNSUPPORTED_URL, AppError
 
 
 def test_open_codebase_unsupported_host() -> None:
@@ -91,6 +92,39 @@ class TestGitHubCodeFetcher:
                 pass
         assert ei.value.code == HTTP_ERROR
 
+    @patch("model_audit_cli.adapters.code_fetchers.requests.get")
+    def test_github_no_ref_defaults(self, mock_get: MagicMock) -> None:
+        """Test fetcher gets default branch name when no branch indicated."""
+        # 1) Default-branch lookup JSON
+        api_resp = make_response(
+            status=200,
+            body={"default_branch": "main"},
+            url="https://api.github.com/repos/org/repo",
+        )
+
+        # 2) Tarball for that branch (binary)
+        tgz = build_tgz({"README.md": b"# GH default branch\n"})
+        tar_resp = make_response(
+            status=200,
+            text="",
+            url="https://api.github.com/repos/org/repo/tarball/main",
+        )
+        tar_resp._content = tgz
+
+        # Return them in order: API first, then tarball
+        mock_get.side_effect = [api_resp, tar_resp]
+
+        url = "https://github.com/org/repo"  # no /tree/<rev> and no ref
+        with open_codebase(url) as view:
+            assert view.read_text("README.md").startswith("# GH default")
+
+        # Assert both calls happened as expected
+        assert mock_get.call_count == 2
+        first_url = mock_get.call_args_list[0][0][0]
+        second_url = mock_get.call_args_list[1][0][0]
+        assert first_url == "https://api.github.com/repos/org/repo"
+        assert "/repos/org/repo/tarball/main" in second_url
+
 
 class TestGitLabCodeFetcher:
     """Test cases for the GitLabCodeFetcher."""
@@ -124,3 +158,54 @@ class TestGitLabCodeFetcher:
             with open_codebase("https://gitlab.com/org/proj", ref="main") as _:
                 pass
         assert ei.value.code == HTTP_ERROR
+
+    @patch("model_audit_cli.adapters.code_fetchers.requests.get")
+    def test_gitlab_no_ref_uses_default_branch(self, mock_get: MagicMock) -> None:
+        """Test fetcher gets default branch name when no branch indicated."""
+        # 1) default branch lookup
+        default_branch_resp = make_response(
+            status=200,
+            body={"default_branch": "main"},
+            url="https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fproj",
+        )
+        # 2) archive tar.gz for that branch
+        tgz = build_tgz({"README.md": b"# GL default branch\n"})
+        archive_resp = make_response(
+            status=200,
+            text="",
+            url=(
+                "https://gitlab.com/api/v4/projects/..."
+                "/repository/archive.tar.gz?sha=main"
+            ),
+        )
+        archive_resp._content = tgz
+
+        mock_get.side_effect = [default_branch_resp, archive_resp]
+
+        url = "https://gitlab.com/group/subgroup/proj"  # no /tree/<rev> and no ref=
+        with open_codebase(url) as view:
+            assert view.read_text("README.md").startswith("# GL default")
+
+        # Assertions: two calls, first to projects API, second to archive with sha=main
+        assert mock_get.call_count == 2
+
+        first_url = mock_get.call_args_list[0][0][0]
+        assert "/api/v4/projects/" in first_url
+        assert "group%2Fsubgroup%2Fproj" in first_url  # URL-encoded project path
+
+        second_url = mock_get.call_args_list[1][0][0]
+        assert "/api/v4/projects/" in second_url
+        assert "repository/archive.tar.gz" in second_url
+        assert "sha=main" in second_url
+
+
+@patch("model_audit_cli.adapters.code_fetchers.requests.get")
+def test_tarball_network_error_maps_to_app_error(mock_get: MagicMock) -> None:
+    """Test when _extract_tarball gives a network failure."""
+    # Simulate a network failure inside _extract_tarball
+    mock_get.side_effect = requests.exceptions.RequestException("boom")
+
+    with pytest.raises(AppError) as ei:
+        with open_codebase("https://github.com/org/repo", ref="main") as _:
+            pass
+    assert ei.value.code == NETWORK_ERROR

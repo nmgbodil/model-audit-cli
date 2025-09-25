@@ -11,7 +11,8 @@ DATASET_ALLOW = [
     "data/*",  # optional: small samples/processed shards if needed
 ]
 
-MAX_FILE_BYTES = 256 * 1024
+# NOTE: Move MAX_FILE_BYTES to .env
+MAX_FILE_BYTES = 512 * 1024
 
 
 class HFDatasetFetcher(_BaseSnapshotFetcher):
@@ -33,11 +34,3 @@ class HFDatasetFetcher(_BaseSnapshotFetcher):
                 Defaults to True.
         """
         super().__init__(repo_id, "dataset", revision, DATASET_ALLOW, use_shared_cache)
-
-
-if __name__ == "__main__":
-    url = "https://huggingface.co/datasets/bookcorpus/bookcorpus"
-    with HFDatasetFetcher("bookcorpus/bookcorpus") as dataset:
-        data = dataset.read_text("README.md")
-
-    print(data)

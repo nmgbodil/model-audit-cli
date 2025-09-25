@@ -20,6 +20,7 @@ MODEL_ALLOW = [
     "tf_model.h5",
 ]
 
+# NOTE: Move MAX_FILE_BYTES to .env
 MAX_FILE_BYTES = 512 * 1024
 
 
@@ -134,11 +135,3 @@ class HFModelFetcher(_BaseSnapshotFetcher):
                 Defaults to True.
         """
         super().__init__(repo_id, "model", revision, MODEL_ALLOW, use_shared_cache)
-
-
-if __name__ == "__main__":
-    url = "https://huggingface.co/google-bert/bert-base-uncased"
-    with HFModelFetcher("google-bert/bert-base-uncased") as model:
-        data = model.read_text("README.md")
-
-    print(data)
