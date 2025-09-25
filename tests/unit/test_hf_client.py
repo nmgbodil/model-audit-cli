@@ -17,7 +17,7 @@ def hf_client() -> HFClient:
 class TestGetModelMetadata:
     """Test cases for the get_model_metadata method."""
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_success(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test successful retrieval of model metadata."""
         # Mock response
@@ -30,7 +30,7 @@ class TestGetModelMetadata:
         assert result == {"name": "test-model"}
         mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_schema_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test schema error when retrieving model metadata."""
         # Mock response
@@ -43,7 +43,7 @@ class TestGetModelMetadata:
         assert exc_info.value.code == SCHEMA_ERROR
         mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_http_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test HTTP error when retrieving model metadata."""
         mock_get.return_value = make_response(404, text="Not Found")
@@ -54,7 +54,7 @@ class TestGetModelMetadata:
 
         mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
     def test_retry_on_5xx_then_succeed(
         self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
@@ -78,7 +78,7 @@ class TestGetModelMetadata:
             4
         )  # Ensure sleep was called with increased backoff time
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
     def test_429_with_retry_after_header(
         self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
@@ -102,7 +102,7 @@ class TestGetModelMetadata:
             1
         )  # Ensure sleep was called with Retry-After value
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
     def test_429_without_retry_after_header(
         self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
@@ -127,7 +127,7 @@ class TestGetModelMetadata:
             4
         )  # Ensure sleep was called with increased backoff time
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
     def test_request_exception_handling(
         self, mock_sleep: MagicMock, mock_get: MagicMock, hf_client: HFClient
@@ -155,7 +155,7 @@ class TestGetModelMetadata:
 class TestGetDatasetMetadata:
     """Test cases for the get_dataset_metadata method."""
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_success(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test successful retrieval of dataset metadata."""
         # Mock response
@@ -170,7 +170,7 @@ class TestGetDatasetMetadata:
             "https://huggingface.co/api/datasets/test-repo"
         )
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_schema_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test schema error when retrieving dataset metadata."""
         # Mock response
@@ -185,7 +185,7 @@ class TestGetDatasetMetadata:
             "https://huggingface.co/api/datasets/test-repo"
         )
 
-    @patch("model_audit_cli.adapters.hf_client.requests.get")
+    @patch("model_audit_cli.adapters.client.requests.get")
     def test_http_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
         """Test HTTP error when retrieving dataset metadata."""
         # Mock response
