@@ -1,5 +1,6 @@
 from typing import Any
 
+from model_audit_cli.adapters.client import HFClient
 from model_audit_cli.resources.base_resource import _BaseResource
 
 
@@ -14,6 +15,7 @@ class DataResource(_BaseResource):
         super().__init__(url=url)
         if self._is_hf_dataset_url():
             self._repo_id = self._hf_id_from_url()
+            self._client = HFClient()
 
     def _is_hf_dataset_url(self) -> bool:
         """Check if the URL corresponds to a Hugging Face dataset.
@@ -23,13 +25,16 @@ class DataResource(_BaseResource):
         """
         return "huggingface.co/datasets/" in self.url
 
-    def metadata(self) -> Any:
-        """Retrieve metadata associated with the dataset resource.
+    def fetch_metadata(self) -> Any:
+        """Get dataset metadata from Huggingface API.
 
         Returns:
-            Any: Metadata information.
+            Any: JSON object with models metadata.
         """
-        pass
+        if self.metadata is None:
+            self.metadata = self._client.get_model_metadata(self._repo_id)
+
+        return self.metadata
 
     def open_file(self, filename: str) -> Any:
         """Open a file within the dataset resource.
