@@ -1,5 +1,6 @@
 from typing import Any
 
+from model_audit_cli.adapters.client import GitHubClient, GitLabClient
 from model_audit_cli.adapters.code_fetchers import open_codebase
 from model_audit_cli.errors import NOT_FOUND, AppError
 from model_audit_cli.resources.base_resource import _BaseResource
@@ -15,7 +16,10 @@ class CodeResource(_BaseResource):
             Any: The metadata of the resource. The exact type and structure
             of the metadata depend on the specific implementation.
         """
-        pass
+        if "github.com" in self.url:
+            return GitHubClient().get_metadata(self.url)
+        if "gitlab.com" in self.url:
+            return GitLabClient().get_metadata(self.url)
 
     def open_file(self, filename: str) -> str:
         """Opens and reads the content of a file from a specified repository.
