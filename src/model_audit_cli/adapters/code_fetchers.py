@@ -10,6 +10,7 @@ from urllib.parse import quote_plus, urlparse
 
 import requests
 
+from model_audit_cli.adapters.client import GitHubClient, GitLabClient
 from model_audit_cli.adapters.model_fetchers import _BaseSnapshotFetcher
 from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.errors import (
@@ -121,7 +122,9 @@ class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
         """
         self.owner = owner
         self.repo = repo
-        self.ref = ref or _get_github_default_branch(owner, repo, token)
+        self.ref = ref or GitHubClient().get_metadata(
+            f"https://github.com/{owner}/{repo}"
+        ).get("default_branch", "main")
         self.token = token
         self._tmp_dir: Optional[tempfile.TemporaryDirectory[str]] = None
         self._root: Optional[Path] = None
@@ -155,21 +158,6 @@ class _GitHubCodeFetcher(AbstractContextManager[RepoView]):
             self._root = None
 
 
-def _get_github_default_branch(
-    owner: str, repo: str, token: Optional[str] = None
-) -> str:
-    url = f"https://api.github.com/repos/{owner}/{repo}"
-    headers = {"Accept": "application/vnd.github+json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    response = requests.get(url, headers=headers)
-    # NOTE: Error handling needs to be done
-    if not response.ok:
-        return "main"
-    default_branch: str = response.json().get("default_branch", "main")
-    return default_branch
-
-
 class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
     """A context manager for fetching and extracting GitLab repositories as a tar.gz."""
 
@@ -188,7 +176,9 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
             token (Optional[str]): A GitLab personal access token for authentication.
         """
         self.ns_name = ns_name
-        self.ref = ref or _get_gitlab_default_branch(ns_name)
+        self.ref = ref or GitLabClient().get_metadata(
+            f"https://gitlab.com/{ns_name}"
+        ).get("default_branch", "main")
         self.token = token
         self._tmp_dir: Optional[tempfile.TemporaryDirectory[str]] = None
         self._root: Optional[Path] = None
@@ -221,18 +211,6 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
         finally:
             self._tmp_dir = None
             self._root = None
-
-
-def _get_gitlab_default_branch(project_path: str, token: Optional[str] = None) -> str:
-    # Only needed if you want the name; GitLab archive works fine without sha
-    url = f"https://gitlab.com/api/v4/projects/{quote_plus(project_path)}"
-    headers = {"PRIVATE-TOKEN": token} if token else {}
-    response = requests.get(url, headers=headers)
-    # NOTE: Error handling needs to be done
-    if not response.ok:
-        return "main"
-    default_branch: str = response.json().get("default_branch", "main")
-    return default_branch
 
 
 def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
