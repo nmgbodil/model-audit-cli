@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any, ContextManager, Mapping, Optional
+from typing import Any, ContextManager, Optional
 from urllib.parse import quote_plus, urlparse
 
 import requests
@@ -213,7 +213,7 @@ class _GitLabCodeFetcher(AbstractContextManager[RepoView]):
             self._root = None
 
 
-def _extract_tarball(url: str, headers: Mapping[str, Any], dest: Path) -> None:
+def _extract_tarball(url: str, headers: dict[str, Any], dest: Path) -> None:
     try:
         response = requests.get(url, headers=headers, allow_redirects=True)
         response.raise_for_status()

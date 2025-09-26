@@ -1,23 +1,23 @@
 import io
 import json
 import tarfile
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 import requests
 
 
 def make_response(
     status: int,
-    body: Any | None = None,
+    body: Optional[Any] = None,
     text: str = "",
     url: str = "https://huggingface.co/api/models/test-repo",
-    headers: Optional[Mapping[str, Any]] = None,
+    headers: Optional[dict[str, Any]] = None,
 ) -> requests.Response:
     """Create a mock HTTP response object with the given status, body, text, and URL.
 
     Args:
         status (int): The HTTP status code for the response.
-        body (dict | None): The JSON body of the response. Defaults to None.
+        body (Optional[Any])): The JSON body of the response. Defaults to None.
         text (str): The plain text content of the response. Defaults to an empty string.
         url (str): The URL associated with the response. Defaults to a test URL.
 

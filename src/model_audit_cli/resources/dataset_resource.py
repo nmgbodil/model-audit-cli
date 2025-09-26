@@ -6,7 +6,7 @@ from model_audit_cli.errors import NOT_FOUND, AppError
 from model_audit_cli.resources.base_resource import _BaseResource
 
 
-class DataResource(_BaseResource):
+class DatasetResource(_BaseResource):
     """Represents a dataset resource for a machine learning model."""
 
     def __init__(self, url: str) -> None:
@@ -34,7 +34,7 @@ class DataResource(_BaseResource):
             Any: JSON object with models metadata.
         """
         if self.metadata is None:
-            self.metadata = self._client.get_model_metadata(self._repo_id)
+            self.metadata = self._client.get_dataset_metadata(self._repo_id)
 
         return self.metadata
 

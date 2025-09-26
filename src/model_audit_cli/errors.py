@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 # Canonical error codes (keep short & stable)
 NETWORK_ERROR = "NETWORK_ERROR"  # DNS, connect, TLS, timeout
@@ -24,14 +24,14 @@ class AppError(Exception):
         message (str): A human-readable error message.
         cause (Optional[BaseException]): The underlying exception that caused
             this error, if any.
-        context (Optional[Mapping[str, Any]]): Additional context about the error,
+        context (Optional[dict[str, Any]]): Additional context about the error,
             such as request details.
     """
 
     code: str
     message: str
     cause: Optional[BaseException] = None
-    context: Optional[Mapping[str, Any]] = None
+    context: Optional[dict[str, Any]] = None
 
     def __str__(self) -> str:
         """Return a string representation of the error.
@@ -56,7 +56,7 @@ def http_error_from_hf_response(
     url: str,
     status: int,
     body: Optional[str] = None,
-    headers: Optional[Mapping[str, Any]] = None,
+    headers: Optional[dict[str, Any]] = None,
 ) -> AppError:
     """Create an AppError instance from an HTTP response from the Hugging Face API.
 
@@ -64,7 +64,7 @@ def http_error_from_hf_response(
         url (str): The URL of the API request.
         status (int): The HTTP status code of the response.
         body (Optional[str]): The body of the response, if available.
-        headers (Optional[Mapping[str, Any]]): The headers of the response,
+        headers (Optional[dict[str, Any]]): The headers of the response,
             if available.
 
     Returns:
