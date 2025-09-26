@@ -16,7 +16,7 @@ class ModelResource(_BaseResource):
         super().__init__(url=url)
         self._repo_id = self._hf_id_from_url()
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Retrieve metadata associated with the model resource.
 
         Returns:

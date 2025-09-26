@@ -25,7 +25,7 @@ class DataResource(_BaseResource):
         """
         return "huggingface.co/datasets/" in self.url
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Retrieve metadata associated with the dataset resource.
 
         Returns:

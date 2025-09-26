@@ -9,17 +9,20 @@ from model_audit_cli.resources.base_resource import _BaseResource
 class CodeResource(_BaseResource):
     """Represents a code resource for a machine learning model."""
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Retrieves metadata associated with the resource.
 
         Returns:
             Any: The metadata of the resource. The exact type and structure
             of the metadata depend on the specific implementation.
         """
-        if "github.com" in self.url:
-            return GitHubClient().get_metadata(self.url)
-        if "gitlab.com" in self.url:
-            return GitLabClient().get_metadata(self.url)
+        if self.metadata is None:
+            if "github.com" in self.url:
+                self.metadata = GitHubClient().get_metadata(self.url)
+            elif "gitlab.com" in self.url:
+                self.metadata = GitLabClient().get_metadata(self.url)
+
+        return self.metadata
 
     def open_file(self, filename: str) -> str:
         """Opens and reads the content of a file from a specified repository.
