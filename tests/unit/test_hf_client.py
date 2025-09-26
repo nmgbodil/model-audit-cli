@@ -4,7 +4,7 @@ import pytest
 import requests
 from utils import make_response
 
-from model_audit_cli.adapters.hf_client import HFClient
+from model_audit_cli.adapters.client import HFClient
 from model_audit_cli.errors import SCHEMA_ERROR, AppError
 
 
@@ -28,7 +28,9 @@ class TestGetModelMetadata:
 
         # Assertions
         assert result == {"name": "test-model"}
-        mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
+        mock_get.assert_called_once_with(
+            "https://huggingface.co/api/models/test-repo", headers={}
+        )
 
     @patch("model_audit_cli.adapters.client.requests.get")
     def test_schema_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
@@ -41,7 +43,9 @@ class TestGetModelMetadata:
             hf_client.get_model_metadata("test-repo")
 
         assert exc_info.value.code == SCHEMA_ERROR
-        mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
+        mock_get.assert_called_once_with(
+            "https://huggingface.co/api/models/test-repo", headers={}
+        )
 
     @patch("model_audit_cli.adapters.client.requests.get")
     def test_http_error(self, mock_get: MagicMock, hf_client: HFClient) -> None:
@@ -52,7 +56,9 @@ class TestGetModelMetadata:
         with pytest.raises(AppError):
             print(hf_client.get_model_metadata("test-repo"))
 
-        mock_get.assert_called_once_with("https://huggingface.co/api/models/test-repo")
+        mock_get.assert_called_once_with(
+            "https://huggingface.co/api/models/test-repo", headers={}
+        )
 
     @patch("model_audit_cli.adapters.client.requests.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to avoid actual delays
@@ -167,7 +173,7 @@ class TestGetDatasetMetadata:
         # Assertions
         assert result == {"name": "test-dataset"}
         mock_get.assert_called_once_with(
-            "https://huggingface.co/api/datasets/test-repo"
+            "https://huggingface.co/api/datasets/test-repo", headers={}
         )
 
     @patch("model_audit_cli.adapters.client.requests.get")
@@ -182,7 +188,7 @@ class TestGetDatasetMetadata:
 
         assert exc_info.value.code == SCHEMA_ERROR
         mock_get.assert_called_once_with(
-            "https://huggingface.co/api/datasets/test-repo"
+            "https://huggingface.co/api/datasets/test-repo", headers={}
         )
 
     @patch("model_audit_cli.adapters.client.requests.get")
@@ -196,5 +202,5 @@ class TestGetDatasetMetadata:
             hf_client.get_dataset_metadata("test-repo")
 
         mock_get.assert_called_once_with(
-            "https://huggingface.co/api/datasets/test-repo"
+            "https://huggingface.co/api/datasets/test-repo", headers={}
         )

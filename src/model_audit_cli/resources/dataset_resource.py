@@ -1,6 +1,6 @@
 from typing import Any
 
-from model_audit_cli.adapters.hf_client import HFClient
+from model_audit_cli.adapters.client import HFClient
 from model_audit_cli.resources.base_resource import _BaseResource
 
 
