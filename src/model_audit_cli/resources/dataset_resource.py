@@ -25,13 +25,16 @@ class DataResource(_BaseResource):
         """
         return "huggingface.co/datasets/" in self.url
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Get dataset metadata from Huggingface API.
 
         Returns:
             Any: JSON object with models metadata.
         """
-        return self._client.get_model_metadata(self._repo_id)
+        if self.metadata is None:
+            self.metadata = self._client.get_model_metadata(self._repo_id)
+
+        return self.metadata
 
     def open_file(self, filename: str) -> Any:
         """Open a file within the dataset resource.

@@ -16,13 +16,16 @@ class ModelResource(_BaseResource):
         self._repo_id = self._hf_id_from_url()
         self._client = HFClient()
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Get model metadata from Huggingface API.
 
         Returns:
             Any: JSON object with models metadata.
         """
-        return self._client.get_model_metadata(self._repo_id)
+        if self.metadata is None:
+            self.metadata = self._client.get_model_metadata(self._repo_id)
+
+        return self.metadata
 
     def open_file(self, filename: str) -> Any:
         """Open a file within the model resource.

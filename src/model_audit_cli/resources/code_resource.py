@@ -21,15 +21,19 @@ class CodeResource(_BaseResource):
         """
         return "huggingface.co/spaces/" in self.url
 
-    def metadata(self) -> Any:
+    def fetch_metadata(self) -> Any:
         """Retrieves metadata associated with the resource.
 
         Returns:
             Any: The metadata of the resource. The exact type and structure
             of the metadata depend on the specific implementation.
         """
-        if self._is_hf_space_url():
-            return self._client.get_space_metadata(self._repo_id)
+        if self.metadata is None:
+            if self._is_hf_space_url():
+                self.metadata = self._client.get_space_metadata(self._repo_id)
+            # NOTE: Add Image.NET and handle errors gracefully
+
+        return self.metadata
 
     def open_file(self, filename: str) -> Any:
         """Opens a file with the given filename.
