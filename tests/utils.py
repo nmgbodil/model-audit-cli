@@ -1,4 +1,6 @@
+import io
 import json
+import tarfile
 from typing import Any, Mapping, Optional
 
 import requests
@@ -34,3 +36,15 @@ def make_response(
     if headers:
         response.headers.update(headers)
     return response
+
+
+def build_tgz(files: dict[str, bytes]) -> bytes:
+    """Create a tiny tar.gz with a top-level folder (like GitHub/GitLab archives)."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        for rel, data in files.items():
+            data_io = io.BytesIO(data)
+            info = tarfile.TarInfo(name=f"top/{rel}")
+            info.size = len(data)
+            tf.addfile(info, data_io)
+    return buf.getvalue()

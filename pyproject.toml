@@ -9,7 +9,8 @@ version = "0.1.0"
 dependencies = [
   "requests>=2.32",
   "pydantic>=2, <3",
-  "types-requests>=2.32"
+  "types-requests>=2.32",
+  "huggingface-hub>=0.35"
 ]
 
 [project.optional-dependencies]

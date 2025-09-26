@@ -1,5 +1,6 @@
 import time
-from typing import Any
+from typing import Any, Optional
+from urllib.parse import quote_plus, urlparse
 
 import requests
 
@@ -155,6 +156,104 @@ class HFClient(_Client):
             raise AppError(
                 code=SCHEMA_ERROR,
                 message="Unexpected shape for space metadata.",
+                context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
+            )
+        return data
+
+
+class GitHubClient(_Client):
+    """A client for interacting with the GitHub API.
+
+    Attributes:
+        base_url (str): The base URL for the GitHub API.
+    """
+
+    def __init__(self, base_url: str = "https://api.github.com/repos"):
+        """Initialize the GitHubClient with a base URL.
+
+        Args:
+            base_url (str): The base URL for the GitHub API.
+                Defaults to "https://api.github.com/repos".
+        """
+        super().__init__(base_url=base_url)
+
+    def _github_owner_repo_from_url(self, url: str) -> tuple[str, str]:
+        path = urlparse(url)
+        parts = [x for x in path.path.strip("/").split("/") if x]
+        return parts[0], parts[1]
+
+    def get_metadata(
+        self, url: str, retries: int = 0, token: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Retrieve metadata for a specific model from the GitHub API.
+
+        Args:
+            repo_id (str): The repository ID of the model.
+
+        Returns:
+            dict[str, Any]: The metadata of the model.
+
+        Raises:
+            AppError: If the response data is not a dictionary or if the request fails.
+        """
+        owner, repo = self._github_owner_repo_from_url(url)
+        path = f"/{owner}/{repo}"
+        headers = {"Accept": "application/vnd.github+json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, dict):
+            raise AppError(
+                code=SCHEMA_ERROR,
+                message="Unexpected shape for GitHub metadata.",
+                context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
+            )
+        return data
+
+
+class GitLabClient(_Client):
+    """A client for interacting with the GitLab API.
+
+    Attributes:
+        base_url (str): The base URL for the GitLab API.
+    """
+
+    def __init__(self, base_url: str = "https://gitlab.com/api/v4/projects"):
+        """Initialize the GitLabClient with a base URL.
+
+        Args:
+            base_url (str): The base URL for the GitLab API.
+                Defaults to "https://gitlab.com/api/v4/projects".
+        """
+        super().__init__(base_url=base_url)
+
+    def _gitlab_owner_repo_from_url(self, url: str) -> str:
+        path = urlparse(url)
+        parts = [x for x in path.path.strip("/").split("/") if x]
+        return "/".join(parts)
+
+    def get_metadata(
+        self, url: str, retries: int = 0, token: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Retrieve metadata for a specific model from the GitLab API.
+
+        Args:
+            repo_id (str): The repository ID of the model.
+
+        Returns:
+            dict[str, Any]: The metadata of the model.
+
+        Raises:
+            AppError: If the response data is not a dictionary or if the request fails.
+        """
+        ns_name = self._gitlab_owner_repo_from_url(url)
+        path = f"/{quote_plus(ns_name)}"
+        headers = {"PRIVATE-TOKEN": token} if token else {}
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, dict):
+            raise AppError(
+                code=SCHEMA_ERROR,
+                message="Unexpected shape for GitLab metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
         return data
