@@ -65,6 +65,7 @@ We use **pre-commit** so formatting/linting/type checks run automatically on com
 pip install -e ".[dev]"
 pre-commit install
 pre-commit run --all-files   # baseline the repo once
+```
 
 THe phase-1 `run` script that serves as the CLI entrypoint for the project.  
 It currently supports three commands required by the specification:
