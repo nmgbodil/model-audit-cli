@@ -27,7 +27,6 @@ class TestHFModelFetcher:
         kwargs = snapshot_download_mock.call_args.kwargs
         assert kwargs["repo_type"] == "model"
         assert kwargs["repo_id"] == "org/name"
-        assert kwargs["local_dir_use_symlinks"] is False
         assert "allow_patterns" in kwargs
 
     @patch("model_audit_cli.adapters.model_fetchers.snapshot_download")

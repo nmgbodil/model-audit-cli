@@ -70,7 +70,6 @@ class _BaseSnapshotFetcher(AbstractContextManager[RepoView]):
                 revision=self.revision,
                 allow_patterns=self.allow_patterns,
                 local_dir=str(target),
-                local_dir_use_symlinks=False,
             )
         )
         self._local_path = local_path

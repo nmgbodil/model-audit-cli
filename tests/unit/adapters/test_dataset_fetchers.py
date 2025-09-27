@@ -29,5 +29,4 @@ class TestHFDatasetFetcher:
         kwargs = snapshot_download_mock.call_args.kwargs
         assert kwargs["repo_type"] == "dataset"
         assert kwargs["repo_id"] == "ns/ds"
-        assert kwargs["local_dir_use_symlinks"] is False
         assert "allow_patterns" in kwargs

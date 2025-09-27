@@ -43,7 +43,6 @@ class TestHFSpaceFetcher:
         kwargs = snapshot_download_mock.call_args.kwargs
         assert kwargs["repo_type"] == "space"
         assert kwargs["repo_id"] == "acme/demo"
-        assert kwargs["local_dir_use_symlinks"] is False
 
 
 class TestGitHubCodeFetcher:
