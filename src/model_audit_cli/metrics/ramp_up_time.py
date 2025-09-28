@@ -25,23 +25,23 @@ class RampUpTime(Metric):
         """
         t0 = time.perf_counter()
 
-        readme_text: str = model.get("readme_text", "")
-        example_files: list[str] = model.get("example_files", [])
-        likes: int = model.get("likes", 0)
+        with model.model.open_file() as repo:
+            readme = repo.read_text("README.md", errors="ignore")
+            models = repo.get_number("models")
 
-        readme_score = min(len(readme_text) / 5000.0, 1.0)
-        examples_score = (
-            1.0
-            if any(
-                f.endswith(".ipynb") or "example" in f.lower() for f in example_files
-            )
-            else 0.0
-        )
-        likes_score = min(likes / 1000.0, 1.0)
+        readme_score = min(len(readme) / 5000.0, 1.0)
+        models_score = min(models / 10.0, 1.0) 
+    
 
-        self.value = 0.4 * readme_score + 0.35 * examples_score + 0.25 * likes_score
+        # Final score: weighted average
+        self.value = 0.6 * readme_score + 0.4 * models_score
         self.latency_ms = (time.perf_counter() - t0) * 1000.0
-        self.details = {}
+        self.details = {
+            "readme_length": len(readme),
+            "num_models": models,
+            "readme_score": readme_score,
+            "models_score": models_score,
+        }
 
         return self
 
