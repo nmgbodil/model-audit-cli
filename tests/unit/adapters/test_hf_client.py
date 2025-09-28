@@ -27,7 +27,7 @@ class TestGetModelMetadata:
         result = hf_client.get_model_metadata("test-repo")
 
         # Assertions
-        assert result == {"name": "test-model"}
+        assert result == {"name": "test-model", "num_contributors": None}
         mock_get.assert_called_once_with(
             "https://huggingface.co/api/models/test-repo", headers={}
         )
@@ -77,7 +77,7 @@ class TestGetModelMetadata:
         result = hf_client.get_model_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-model"}
+        assert result == {"name": "test-model", "num_contributors": None}
         assert mock_get.call_count == 3
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
         mock_sleep.assert_any_call(
@@ -102,7 +102,7 @@ class TestGetModelMetadata:
         result = hf_client.get_model_metadata("test-repo", 1)
 
         # Assertions
-        assert result == {"name": "test-model"}
+        assert result == {"name": "test-model", "num_contributors": None}
         assert mock_get.call_count == 2
         mock_sleep.assert_called_once_with(
             1
@@ -125,7 +125,7 @@ class TestGetModelMetadata:
         result = hf_client.get_model_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-model"}
+        assert result == {"name": "test-model", "num_contributors": None}
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2  # Ensure sleep was called for retries
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
@@ -150,7 +150,7 @@ class TestGetModelMetadata:
         result = hf_client.get_model_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-model"}
+        assert result == {"name": "test-model", "num_contributors": None}
         assert mock_get.call_count == 3
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
         mock_sleep.assert_any_call(
@@ -171,7 +171,7 @@ class TestGetDatasetMetadata:
         result = hf_client.get_dataset_metadata("test-repo")
 
         # Assertions
-        assert result == {"name": "test-dataset"}
+        assert result == {"name": "test-dataset", "num_contributors": None}
         mock_get.assert_called_once_with(
             "https://huggingface.co/api/datasets/test-repo", headers={}
         )
@@ -219,7 +219,7 @@ class TestGetSpaceMetadata:
         result = hf_client.get_space_metadata("test-repo")
 
         # Assertions
-        assert result == {"name": "test-space"}
+        assert result == {"name": "test-space", "num_contributors": None}
         mock_get.assert_called_once_with(
             "https://huggingface.co/api/spaces/test-repo", headers={}
         )
@@ -270,7 +270,7 @@ class TestGetSpaceMetadata:
         result = hf_client.get_space_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-space"}
+        assert result == {"name": "test-space", "num_contributors": None}
         assert mock_get.call_count == 3
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
         mock_sleep.assert_any_call(
@@ -295,7 +295,7 @@ class TestGetSpaceMetadata:
         result = hf_client.get_space_metadata("test-repo", 1)
 
         # Assertions
-        assert result == {"name": "test-space"}
+        assert result == {"name": "test-space", "num_contributors": None}
         assert mock_get.call_count == 2
         mock_sleep.assert_called_once_with(
             1
@@ -318,7 +318,7 @@ class TestGetSpaceMetadata:
         result = hf_client.get_space_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-space"}
+        assert result == {"name": "test-space", "num_contributors": None}
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2  # Ensure sleep was called for retries
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
@@ -343,7 +343,7 @@ class TestGetSpaceMetadata:
         result = hf_client.get_space_metadata("test-repo", 2)
 
         # Assertions
-        assert result == {"name": "test-space"}
+        assert result == {"name": "test-space", "num_contributors": None}
         assert mock_get.call_count == 3
         mock_sleep.assert_any_call(2)  # Ensure sleep was called with backoff time
         mock_sleep.assert_any_call(
