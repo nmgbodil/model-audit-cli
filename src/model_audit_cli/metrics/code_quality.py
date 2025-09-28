@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import subprocess
 import time
-from typing import Any, Dict
+from typing import Any
 
 from model_audit_cli.adapters.code_fetchers import open_codebase
 from model_audit_cli.adapters.repo_view import RepoView
-from model_audit_cli.resources.code_resource import CodeResource
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
+from model_audit_cli.resources.code_resource import CodeResource
 
 
 class CodeQuality(Metric):
@@ -18,7 +18,8 @@ class CodeQuality(Metric):
         super().__init__(name="code_quality")
 
     def _run_linter(self, repo: RepoView, cmd: list[str]) -> float:
-        proc = subprocess.run(
+        """Run a linter command in the given repository and compute a score."""
+        proc: subprocess.CompletedProcess[str] = subprocess.run(
             cmd,
             cwd=repo.root,
             capture_output=True,
@@ -27,7 +28,8 @@ class CodeQuality(Metric):
         )
         if proc.returncode == 0:
             return 1.0
-        errors = proc.stdout.count("\n") + proc.stderr.count("\n")
+
+        errors: int = proc.stdout.count("\n") + proc.stderr.count("\n")
 
         if errors == 0:
             return 1.0
@@ -44,14 +46,15 @@ class CodeQuality(Metric):
         return self._run_linter(repo, ["mypy", "--strict", "."])
 
     def _stars_score(self, url: str) -> float:
-        meta = CodeResource(url).fetch_metadata() or {}
+        """Fetch metadata for repo and convert stars/likes count to a score."""
+        meta: dict[str, Any] = CodeResource(url).fetch_metadata() or {}
 
-        if "stargazers_count" in meta:      # GitHub
-            raw = meta.get("stargazers_count", 0)
-        elif "star_count" in meta:          # GitLab
-            raw = meta.get("star_count", 0)
-        elif "likes" in meta:               # Hugging Face
-            raw = meta.get("likes", 0)
+        if "stargazers_count" in meta:  # GitHub
+            raw: int = int(meta.get("stargazers_count", 0))
+        elif "star_count" in meta:  # GitLab
+            raw = int(meta.get("star_count", 0))
+        elif "likes" in meta:  # Hugging Face
+            raw = int(meta.get("likes", 0))
         else:
             raw = 0
 
@@ -63,9 +66,10 @@ class CodeQuality(Metric):
 
     def compute(self, model: Model) -> CodeQuality:
         """Run code quality analysis on the model's code URL."""
-        start = time.perf_counter()
+        start: float = time.perf_counter()
 
-        url = model.get("url")  # assumes model is dict-like
+        # If your Model is a dict-like, .get() is valid.
+        url: str | None = model.get("url")  # type: ignore[attr-defined]
         if not url:
             self.value = 0.0
             self.latency_ms = int((time.perf_counter() - start) * 1000)
@@ -73,11 +77,11 @@ class CodeQuality(Metric):
             return self
 
         with open_codebase(url) as repo:
-            flake8 = self._flake8_score(repo)
-            mypy = self._mypy_score(repo)
+            flake8: float = self._flake8_score(repo)
+            mypy: float = self._mypy_score(repo)
 
-        stars = self._stars_score(url)
-        score = (flake8 + mypy + stars) / 3.0
+        stars: float = self._stars_score(url)
+        score: float = (flake8 + mypy + stars) / 3.0
 
         self.value = score
         self.latency_ms = int((time.perf_counter() - start) * 1000)
@@ -86,4 +90,4 @@ class CodeQuality(Metric):
             "mypy": mypy,
             "stars": stars,
         }
-        return self
+        return None
