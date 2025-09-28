@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, ContextManager, Iterable, Optional
 
 from model_audit_cli.adapters.client import HFClient
 from model_audit_cli.adapters.dataset_fetchers import HFDatasetFetcher
-from model_audit_cli.errors import NOT_FOUND, AppError
+from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.resources.base_resource import _BaseResource
 
 
@@ -38,54 +38,13 @@ class DatasetResource(_BaseResource):
 
         return self.metadata
 
-    def open_file(self, filename: str) -> str:
-        """Opens and reads the content of a file from the dataset repository.
-
-        Args:
-            filename (str): The name of the file to be opened.
-
-        Returns:
-            str: The content of the file as a string.
-
-        Raises:
-            AppError: If the file does not exist in the dataset repository.
-        """
-        text = None
-        with HFDatasetFetcher(self._repo_id) as dataset:
-            if dataset.exists(filename):
-                text = dataset.read_text(filename)
-
-        if text is not None:
-            return text
-
-        raise AppError(
-            NOT_FOUND,
-            f"{filename} does not exist in this repo.",
-            context={"url": self.url},
-        )
-
-    def open_json_file(self, filename: str) -> Any:
-        """Opens and reads a JSON file from a specified dataset repository.
-
-        Args:
-            filename (str): The name of the JSON file to be opened.
+    def open_files(
+        self, allow_patterns: Optional[Iterable[str]] = None
+    ) -> ContextManager[RepoView]:
+        """Opens and provides access to files from the dataset repository.
 
         Returns:
-            Any: The content of the JSON file.
-
-        Raises:
-            AppError: If the specified file does not exist in the dataset repository.
+            ContextManager[RepoView]: A context manager that provides access to the
+                repository files through a RepoView interface.
         """
-        data = None
-        with HFDatasetFetcher(self._repo_id) as dataset:
-            if dataset.exists(filename):
-                data = dataset.read_json(filename)
-
-        if data is not None:
-            return data
-
-        raise AppError(
-            NOT_FOUND,
-            f"{filename} does not exist in this repo.",
-            context={"url": self.url},
-        )
+        return HFDatasetFetcher(self._repo_id, allow_patterns=allow_patterns)

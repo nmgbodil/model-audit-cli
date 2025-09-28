@@ -122,6 +122,7 @@ class HFModelFetcher(_BaseSnapshotFetcher):
         self,
         repo_id: str,
         revision: Optional[str] = None,
+        allow_patterns: Optional[Iterable[str]] = None,
         use_shared_cache: bool = True,
     ) -> None:
         """Initialize the model fetcher with repository details.
@@ -130,7 +131,10 @@ class HFModelFetcher(_BaseSnapshotFetcher):
             repo_id (str): The ID of the model repository to fetch.
             revision (Optional[str]):
                 The specific revision of the model repository to fetch.
+            allow_patterns (Optional[Iterable[str]]): Patterns of files to allow
+                during fetching. Defaults to MODEL_ALLOW.
             use_shared_cache (bool): Whether to use a shared cache for the snapshot.
                 Defaults to True.
         """
-        super().__init__(repo_id, "model", revision, MODEL_ALLOW, use_shared_cache)
+        allow_patterns = allow_patterns or MODEL_ALLOW
+        super().__init__(repo_id, "model", revision, allow_patterns, use_shared_cache)
