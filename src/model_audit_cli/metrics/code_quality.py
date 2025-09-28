@@ -64,7 +64,7 @@ class CodeQuality(Metric):
             return 0.5
         return 1.0
 
-    def compute(self, model: Model) -> CodeQuality:
+    def compute(self, model: Model) -> None:
         """Run code quality analysis on the model's code URL."""
         start: float = time.perf_counter()
 
@@ -74,7 +74,7 @@ class CodeQuality(Metric):
             self.value = 0.0
             self.latency_ms = int((time.perf_counter() - start) * 1000)
             self.details = {"error": "No code URL provided"}
-            return self
+            return None
 
         with open_codebase(url) as repo:
             flake8: float = self._flake8_score(repo)
