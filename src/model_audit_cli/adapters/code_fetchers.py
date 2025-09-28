@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any, ContextManager, Optional
+from typing import Any, ContextManager, Iterable, Optional
 from urllib.parse import quote_plus, urlparse
 
 import requests
@@ -31,6 +31,7 @@ def open_codebase(
     *,
     ref: Optional[str] = None,
     token: Optional[str] = None,
+    allow_patterns: Optional[Iterable[str]] = None,
 ) -> ContextManager[RepoView]:
     """Open a codebase and return a context manager for interacting with it.
 
@@ -54,7 +55,9 @@ def open_codebase(
     """
     host, parts = _parse(url)
     if _is_hf_space(host, parts):
-        return _HFSpaceFetcher(f"{parts[1]}/{parts[2]}", _extract_rev(parts))
+        return _HFSpaceFetcher(
+            f"{parts[1]}/{parts[2]}", _extract_rev(parts), allow_patterns=allow_patterns
+        )
     if host.endswith("github.com"):
         owner, repo = parts[0], parts[1]
         revision = _extract_rev(parts) or ref
@@ -87,7 +90,11 @@ class _HFSpaceFetcher(_BaseSnapshotFetcher):
     """Fetcher for Hugging Face Space repositories."""
 
     def __init__(
-        self, repo_id: str, revision: Optional[str], use_shared_cache: bool = True
+        self,
+        repo_id: str,
+        revision: Optional[str],
+        allow_patterns: Optional[Iterable[str]] = None,
+        use_shared_cache: bool = True,
     ) -> None:
         """Initialize the space fetcher with repository details.
 
@@ -95,10 +102,13 @@ class _HFSpaceFetcher(_BaseSnapshotFetcher):
             repo_id (str): The ID of the space repository to fetch.
             revision (Optional[str]):
                 The specific revision of the space repository to fetch.
+            allow_patterns (Optional[Iterable[str]]): Patterns of files to allow
+                during fetching. Defaults to SPACE_ALLOW.
             use_shared_cache (bool): Whether to use a shared cache for the snapshot.
                 Defaults to True.
         """
-        super().__init__(repo_id, "space", revision, SPACE_ALLOW, use_shared_cache)
+        allow_patterns = allow_patterns or SPACE_ALLOW
+        super().__init__(repo_id, "space", revision, allow_patterns, use_shared_cache)
 
 
 class _GitHubCodeFetcher(AbstractContextManager[RepoView]):

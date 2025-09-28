@@ -30,7 +30,9 @@ class TestDatasetResource:
         result = r.open_files()
 
         assert result is mock_context_manager
-        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
+        mock_fetcher.assert_called_once_with(
+            "bookcorpus/bookcorpus", allow_patterns=None
+        )
 
     @patch("model_audit_cli.resources.dataset_resource.HFClient.get_dataset_metadata")
     def test_fetch_metadata_cached(self, mock_get: MagicMock) -> None:
@@ -78,6 +80,8 @@ class TestDatasetResource:
             json_data = repo_view.read_json("dataset_info.json")
             assert json_data == {"splits": {"train": {"num_examples": 10}}}
 
-        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
+        mock_fetcher.assert_called_once_with(
+            "bookcorpus/bookcorpus", allow_patterns=None
+        )
         mock_context_manager.__enter__.assert_called_once()
         mock_context_manager.__exit__.assert_called_once_with(None, None, None)

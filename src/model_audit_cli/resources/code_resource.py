@@ -1,4 +1,4 @@
-from typing import Any, ContextManager
+from typing import Any, ContextManager, Iterable, Optional
 
 from model_audit_cli.adapters.client import GitHubClient, GitLabClient, HFClient
 from model_audit_cli.adapters.code_fetchers import open_codebase
@@ -40,11 +40,13 @@ class CodeResource(_BaseResource):
 
         return self.metadata
 
-    def open_files(self) -> ContextManager[RepoView]:
+    def open_files(
+        self, allow_patterns: Optional[Iterable[str]] = None
+    ) -> ContextManager[RepoView]:
         """Opens and provides access to files from the code repository.
 
         Returns:
             ContextManager[RepoView]: A context manager that provides access to the
                 repository files through a RepoView interface.
         """
-        return open_codebase(self.url)
+        return open_codebase(self.url, allow_patterns=allow_patterns)
