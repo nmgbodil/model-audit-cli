@@ -72,7 +72,7 @@ class CodeQuality(Metric):
         url: str | None = model.code.url if model.code else None
         if not url:
             self.value = 0.0
-            self.latency_ms = int((time.perf_counter() - start) * 1000)
+            self.latency_ms = int(round((time.perf_counter() - start) * 1000))
             self.details = {"error": "No code URL provided"}
             return None
 
@@ -84,7 +84,7 @@ class CodeQuality(Metric):
         score: float = (flake8 + mypy + stars) / 3.0
 
         self.value = score
-        self.latency_ms = int((time.perf_counter() - start) * 1000)
+        self.latency_ms = int(round((time.perf_counter() - start) * 1000))
         self.details = {
             "flake8": flake8,
             "mypy": mypy,

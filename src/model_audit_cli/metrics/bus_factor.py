@@ -101,7 +101,7 @@ class BusFactor(Metric):
 
         # Save results
         self.value = score_parts["final_score"]
-        self.latency_ms = int((time.time() - start_time) * 1000)
+        self.latency_ms = int(round((time.time() - start_time) * 1000))
         self.details = {
             **score_parts,
             "lastModified_model": last_mods["model"],

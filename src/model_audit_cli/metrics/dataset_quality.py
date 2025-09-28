@@ -33,10 +33,10 @@ class DatasetQuality(Metric):
             return 0.5
 
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             updated = datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%SZ")
-            age_days = (datetime.utcnow() - updated).days
+            age_days = (datetime.now(timezone.utc) - updated).days
             if age_days <= 183:
                 return 1.0
             if age_days <= 548:
@@ -76,7 +76,7 @@ class DatasetQuality(Metric):
         if model.dataset is None:
             self.value = 0.0
             self.details = {"error": "No dataset provided"}
-            self.latency_ms = int((time.time() - start) * 1000)
+            self.latency_ms = int(round((time.time() - start) * 1000))
             return
 
         dataset_meta: Dict[str, Any] = model.dataset.fetch_metadata()
@@ -103,4 +103,4 @@ class DatasetQuality(Metric):
             "community": comm_score,
             "example_code": ex_score,
         }
-        self.latency_ms = int((time.time() - start) * 1000)
+        self.latency_ms = int(round((time.time() - start) * 1000))

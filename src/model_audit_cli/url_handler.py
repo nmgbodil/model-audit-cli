@@ -65,9 +65,11 @@ class URLHandler:
         if not prev_model.dataset:
             return None
 
-        readme_content = curr_model.model.open_file("README.md")
-        if prev_model.dataset.url in readme_content:
-            return prev_model.dataset
+        with curr_model.model.open_files(["README.md"]) as repo:
+            if repo.exists("README.md"):
+                readme_content = repo.read_text("README.md")
+                if prev_model.dataset.url in readme_content:
+                    return prev_model.dataset
 
         return None
 

@@ -5,7 +5,7 @@ from model_audit_cli.models import Model
 
 from .base_metric import Metric
 
-MODEL_EXTENSIONS: list[str] = [".bin", ".h5", ".pt", ".onnx", ".tflite"]
+MODEL_EXTENSIONS: list[str] = ["*.bin", "*.h5", "*.pt", "*.onnx", "*.tflite"]
 
 
 class RampUpTime(Metric):
@@ -18,19 +18,18 @@ class RampUpTime(Metric):
     def _open_readme(self, model: Model) -> str:
         """Return the README contents if it exists, otherwise an empty string."""
         readme: str = ""
-        with model.open_files() as files:  # type: ignore[attr-defined]
-            if files.file_exists("README.md"):
-                readme = files.read_text("README.md", errors="ignore")
+        with model.model.open_files() as files:
+            if files.exists("README.md"):
+                readme = files.read_text("README.md")
         return readme
 
     def _count_models(self, model: Model) -> int:
         """Return the number of model files found in the repo."""
         num_models: int = 0
-        with model.open_files() as files:  # type: ignore[attr-defined]
+        with model.model.open_files() as files:
             for ext in MODEL_EXTENSIONS:
-                for path in files.glob(f"**/*{ext}"):
-                    if files.file_exists(str(path)):
-                        num_models += 1
+                found_model_files = list(files.glob(ext))
+                num_models += len(found_model_files)
         return num_models
 
     def calculate_score(self, readme: str, num_models: int) -> Dict[str, float]:
@@ -49,7 +48,7 @@ class RampUpTime(Metric):
 
         # weighted score
         self.value = float(0.6 * scores["readme_score"] + 0.4 * scores["models_score"])
-        self.latency_ms = int((time.perf_counter() - t0) * 1000.0)
+        self.latency_ms = int(round((time.perf_counter() - t0) * 1000.0))
         self.details = {
             "readme_length": len(readme),
             "num_models": num_models,

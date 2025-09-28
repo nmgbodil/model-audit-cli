@@ -6,6 +6,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from model_audit_cli.metrics_engine import compute_all_metrics, flatten_to_ndjson
+from model_audit_cli.models import Metrics
+from model_audit_cli.url_handler import URLHandler
+
 
 # ---- helpers ----
 def cmd_install() -> int:
@@ -90,22 +94,18 @@ def cmd_urls_file(url_file: str) -> int:
     p = Path(url_file)
     if not p.exists():
         print(f"File not found: {url_file}", file=sys.stderr); return 2
-    for line in p.read_text(encoding="utf-8").splitlines():
-        u = line.strip()
-        if not u or u.startswith("#"):
-            continue
-        if not is_model_url(u):
-            continue
-        rec = {
-            "name": u,
-            "category": "MODEL",
-            "ramp_up_time": 1.0, "ramp_up_time_latency": 0,
-            "bus_factor": 1.0, "bus_factor_latency": 0,
-            "correctness": 1.0, "correctness_latency": 0,
-            "documentation": 1.0, "documentation_latency": 0,
-            "license_score": 1.0, "license_score_latency": 0,
-        }
-        print(json.dumps(rec))
+    url_handler = URLHandler()
+    models = url_handler.get_models(url_file)
+    for i, model in enumerate(models):
+        if i > 0 and not model.dataset:
+            model.dataset = url_handler.check_for_shared_dataset(model, models[i - 1])
+        results = compute_all_metrics(model)
+        ndjson = flatten_to_ndjson(results)
+        ndjson["name"] = model.model.url
+        ndjson["category"] = "MODEL"
+
+        print(json.dumps(ndjson))
+
     return 0
 
 # ---- simple “parser” ----

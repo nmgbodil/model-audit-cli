@@ -20,6 +20,7 @@ def _safe_run(metric: Metric, model: Model) -> Metric:
         metric.value = 0.0
         metric.latency_ms = int((time.perf_counter() - start) * 1000.0)
         metric.details = {"error": str(e)}
+        # raise e
         return metric
 
 
