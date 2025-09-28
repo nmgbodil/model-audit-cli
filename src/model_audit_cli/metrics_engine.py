@@ -1,8 +1,8 @@
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 
 def run_metrics(
-    context: Mapping[str, Any], include: Optional[list[str]] = None
+    context: dict[str, Any], include: Optional[list[str]] = None
 ) -> dict[str, Any]:
     """Dummy metrics calculator."""
     result = {

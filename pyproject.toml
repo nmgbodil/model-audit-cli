@@ -6,7 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "model-audit-cli"
 version = "0.1.0"
 # If/when you have runtime deps, add them here:
-dependencies = ["requests>=2.32", "pydantic>=2, <3"]
+dependencies = [
+  "requests>=2.32",
+  "pydantic>=2, <3",
+  "types-requests>=2.32",
+  "huggingface-hub>=0.35"
+]
 
 [project.optional-dependencies]
 dev = [
