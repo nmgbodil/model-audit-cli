@@ -114,6 +114,8 @@ class HFClient(_Client):
                 message="Unexpected shape for model metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
     def get_dataset_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
@@ -136,6 +138,8 @@ class HFClient(_Client):
                 message="Unexpected shape for dataset metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
     def get_space_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
@@ -158,6 +162,8 @@ class HFClient(_Client):
                 message="Unexpected shape for space metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
 
@@ -208,7 +214,23 @@ class GitHubClient(_Client):
                 message="Unexpected shape for GitHub metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+        data["num_contributors"] = self._get_number_contributors(
+            owner, repo, retries=retries, token=token
+        )
+
         return data
+
+    def _get_number_contributors(
+        self, owner: str, repo: str, retries: int = 0, token: Optional[str] = None
+    ) -> Optional[int]:
+        path = f"/{owner}/{repo}/contributors"
+        headers = {"Accept": "application/vnd.github+json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, list):
+            return None
+        return len(data)
 
 
 class GitLabClient(_Client):
@@ -256,4 +278,19 @@ class GitLabClient(_Client):
                 message="Unexpected shape for GitLab metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = self._get_number_contributors(
+            ns_name, retries, token
+        )
         return data
+
+    def _get_number_contributors(
+        self, ns_name: str, retries: int = 0, token: Optional[str] = None
+    ) -> Optional[int]:
+        path = f"/{quote_plus(ns_name)}/repository/contributors"  # URL-encoded id
+        headers = {"PRIVATE-TOKEN": token} if token else {}
+
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, list):
+            return None
+        return len(data)
