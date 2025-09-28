@@ -1,12 +1,10 @@
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict    
+from typing import Any, Dict
 
 from .metrics.base_metric import Metric
 from .metrics.registry import ALL_METRICS
-
-
 
 FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL") == "1"
 

@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pytest
 
 from model_audit_cli.metrics.ramp_up_time import ramp_up_time
-from model_audit_cli.metrics_engine import flatten_to_ndjson, compute_all_metrics
+from model_audit_cli.metrics_engine import compute_all_metrics, flatten_to_ndjson
 
 
 def test_max() -> None:

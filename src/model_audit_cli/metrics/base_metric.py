@@ -1,7 +1,6 @@
 from typing import Any, Dict, Union
 
 
-
 class Metric:
     """Base class for all metrics."""
 
