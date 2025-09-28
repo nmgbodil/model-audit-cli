@@ -1,50 +1,63 @@
 import time
-from typing import Any, Dict
+from typing import Dict
 
+from ..models import Model
 from .base_metric import Metric
+
+MODEL_EXTENSIONS: list[str] = [".bin", ".h5", ".pt", ".onnx", ".tflite"]
 
 
 class RampUpTime(Metric):
     """Calculate the ramp-up time score for a model."""
 
     def __init__(self) -> None:
+        """Initialize the RampUpTime metric."""
         super().__init__(name="ramp_up_time")
 
-    def compute(self, model: Dict[str, Any]) -> "RampUpTime":
-        """Compute ramp-up time score and latency.
+    def _open_readme(self, model: Model) -> str:
+        """Return the README contents if it exists, otherwise an empty string."""
+        readme: str = ""
+        with model.open_file() as files:
+            if files.file_exists("README.md"):
+                readme = files.read_text("README.md", errors="ignore")
+        return readme
 
-        Args:
-            model: Dictionary with possible keys:
-                - "readme_text": str (contents of README)
-                - "likes": int (number of likes)
+    def _count_models(self, model: Model) -> int:
+        """Return the number of model files found in the repo."""
+        num_models: int = 0
+        with model.open_file() as files:
+            for ext in MODEL_EXTENSIONS:
+                for path in files.glob(f"**/*{ext}"):
+                    if files.file_exists(str(path)):
+                        num_models += 1
+        return num_models
 
-        Returns:
-            A tuple containing:
-                - score (float): final ramp-up time score in [0,1]
-                - latency_ms (float): computation time in milliseconds
-        """
-        t0 = time.perf_counter()
+    def calculate_score(self, readme: str, num_models: int) -> Dict[str, float]:
+        """Calculate subscores for README and model files."""
+        readme_score: float = min(len(readme) / 5000.0, 1.0)
+        models_score: float = min(num_models / 10.0, 1.0)
+        return {"readme_score": readme_score, "models_score": models_score}
 
-        with model.model.open_file() as repo:
-            readme = repo.read_text("README.md", errors="ignore")
-            models = repo.get_number("models")
+    def compute(self, model: Model) -> tuple[float, int]:
+        """Compute the ramp-up time score."""
+        t0: float = time.perf_counter()
 
-        readme_score = min(len(readme) / 5000.0, 1.0)
-        models_score = min(models / 10.0, 1.0) 
-    
+        readme: str = self._open_readme(model)
+        num_models: int = self._count_models(model)
+        scores: Dict[str, float] = self.calculate_score(readme, num_models)
 
-        # Final score: weighted average
-        self.value = 0.6 * readme_score + 0.4 * models_score
-        self.latency_ms = (time.perf_counter() - t0) * 1000.0
-        self.details = {
+        # weighted score
+        self.value: float = 0.6 * scores["readme_score"] + 0.4 * scores["models_score"]
+        self.latency_ms: float = (time.perf_counter() - t0) * 1000.0
+        self.details: Dict[str, float | int] = {
             "readme_length": len(readme),
-            "num_models": models,
-            "readme_score": readme_score,
-            "models_score": models_score,
+            "num_models": num_models,
+            **scores,
         }
 
-        return self
+        return None
 
-def ramp_up_time(model: dict[str, Any]) -> RampUpTime:
+
+def ramp_up_time(model: Model) -> RampUpTime:
     """Compatibility wrapper so tests calling ramp_up_time(model) still work."""
     return RampUpTime().compute(model)
