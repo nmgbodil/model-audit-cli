@@ -74,5 +74,5 @@ class URLHandler:
 
 if __name__ == "__main__":
     handler = URLHandler()
-    models = handler.get_models("urls2.txt")
+    models = handler.get_models("urls.txt")
     print(handler.check_for_shared_dataset(models[1], models[0]))
