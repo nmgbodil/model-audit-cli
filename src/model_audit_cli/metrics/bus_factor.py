@@ -5,8 +5,8 @@ import time
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from model_audit_cli.models import Model
 from model_audit_cli.metrics.base_metric import Metric
+from model_audit_cli.models import Model
 
 
 class BusFactor(Metric):

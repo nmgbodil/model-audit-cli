@@ -69,7 +69,7 @@ class CodeQuality(Metric):
         start: float = time.perf_counter()
 
         # If your Model is a dict-like, .get() is valid.
-        url: str | None = model.get("url")  # type: ignore[attr-defined]
+        url: str | None = model.code.url if model.code else None
         if not url:
             self.value = 0.0
             self.latency_ms = int((time.perf_counter() - start) * 1000)

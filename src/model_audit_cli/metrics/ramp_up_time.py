@@ -1,7 +1,8 @@
 import time
-from typing import Any, Dict
+from typing import Dict
 
 from model_audit_cli.models import Model
+
 from .base_metric import Metric
 
 MODEL_EXTENSIONS: list[str] = [".bin", ".h5", ".pt", ".onnx", ".tflite"]

@@ -1,8 +1,7 @@
-from .base_metric import Metric
-
-from .bus_factor import BusFactor
-from .code_quality import CodeQuality
-from .ramp_up_time import RampUpTime
+from model_audit_cli.metrics.base_metric import Metric
+from model_audit_cli.metrics.bus_factor import BusFactor
+from model_audit_cli.metrics.code_quality import CodeQuality
+from model_audit_cli.metrics.ramp_up_time import RampUpTime
 
 ALL_METRICS: list[Metric] = [
     RampUpTime(),

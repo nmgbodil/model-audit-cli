@@ -3,9 +3,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict
 
+from model_audit_cli.models import Model
+
 from .metrics.base_metric import Metric
 from .metrics.registry import ALL_METRICS
-from .models import Model
 
 FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL") == "1"
 
@@ -13,7 +14,7 @@ FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL") == "1"
 def _safe_run(metric: Metric, model: Model) -> Metric:
     start = time.perf_counter()
     try:
-        metric.compute(model)  
+        metric.compute(model)
         return metric
     except Exception as e:
         metric.value = 0.0

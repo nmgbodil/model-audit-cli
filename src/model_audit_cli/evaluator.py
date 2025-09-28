@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from model_audit_cli.metrics_engine import compute_all_metrics, flatten_to_ndjson
+from model_audit_cli.models import Model
+from model_audit_cli.resources.model_resource import ModelResource
 
 
 def main(path: str) -> None:
@@ -15,7 +17,8 @@ def main(path: str) -> None:
 
         record: dict[str, Any] = {"name": url, "category": "MODEL"}
 
-        results = compute_all_metrics({"url": url})
+        model = Model(model=ModelResource(url=url))
+        results = compute_all_metrics(model)
         record.update(flatten_to_ndjson(results))
 
         print(json.dumps(record))
