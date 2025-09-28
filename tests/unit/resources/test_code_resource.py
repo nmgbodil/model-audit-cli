@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from model_audit_cli.errors import NOT_FOUND, AppError
+from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.resources.code_resource import CodeResource
 
 
@@ -58,75 +56,53 @@ class TestCodeResource:
         mock_meta.assert_called_once_with("https://github.com/org/repo")
 
     @patch("model_audit_cli.resources.code_resource.open_codebase")
-    def test_open_file_success(self, mock_open_codebase: MagicMock) -> None:
-        """Test successful file opening and content retrieval."""
-        # make the context manager yield a repo-like object
-        cm = mock_open_codebase.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_text.return_value = "# code readme\n"
-        cm.__enter__.return_value = repo
+    def test_open_files_returns_context_manager(
+        self, mock_open_codebase: MagicMock
+    ) -> None:
+        """Test that open_files returns a context manager for RepoView."""
+        mock_context_manager = MagicMock()
+        mock_open_codebase.return_value = mock_context_manager
 
         r = CodeResource("https://github.com/org/repo")
-        out = r.open_file("README.md")
+        result = r.open_files()
 
-        assert out == "# code readme\n"
+        assert result is mock_context_manager
         mock_open_codebase.assert_called_once_with("https://github.com/org/repo")
-        repo.exists.assert_called_once_with("README.md")
-        repo.read_text.assert_called_once_with("README.md")
 
     @patch("model_audit_cli.resources.code_resource.open_codebase")
-    def test_open_file_not_found_raises(self, mock_open_codebase: MagicMock) -> None:
-        """Test that AppError is raised when file is not found."""
-        cm = mock_open_codebase.return_value
-        repo = MagicMock()
-        repo.exists.return_value = False
-        cm.__enter__.return_value = repo
+    def test_open_files_with_context_manager_usage(
+        self, mock_open_codebase: MagicMock
+    ) -> None:
+        """Test open_files context manager can be used to access repository files."""
+        # Create a mock RepoView
+        mock_repo_view = MagicMock(spec=RepoView)
+        mock_repo_view.exists.return_value = True
+        mock_repo_view.read_text.return_value = "# code readme\n"
+        mock_repo_view.read_json.return_value = {"tool": "gradio", "version": "4.x"}
 
-        r = CodeResource("https://gitlab.com/group/repo")
-        with pytest.raises(AppError) as ei:
-            _ = r.open_file("missing.txt")
-
-        err = ei.value
-        assert err.code == NOT_FOUND
-        assert "missing.txt" in str(err)
-        assert err.context is not None
-        assert "url" in err.context
-        assert err.context["url"].startswith("https://gitlab.com/")
-
-    @patch("model_audit_cli.resources.code_resource.open_codebase")
-    def test_open_json_success(self, mock_open_codebase: MagicMock) -> None:
-        """Test successful JSON file opening and content retrieval."""
-        cm = mock_open_codebase.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_json.return_value = {"tool": "gradio", "version": "4.x"}
-        cm.__enter__.return_value = repo
+        # Setup context manager
+        mock_context_manager = MagicMock()
+        mock_context_manager.__enter__.return_value = mock_repo_view
+        mock_context_manager.__exit__.return_value = None
+        mock_open_codebase.return_value = mock_context_manager
 
         r = CodeResource("https://huggingface.co/spaces/acme/demo")
-        obj = r.open_json("space_config.json")
 
-        assert obj == {"tool": "gradio", "version": "4.x"}
+        with r.open_files() as repo_view:
+            # Test file existence check
+            exists = repo_view.exists("README.md")
+            assert exists is True
+
+            # Test reading text file
+            content = repo_view.read_text("README.md")
+            assert content == "# code readme\n"
+
+            # Test reading JSON file
+            json_data = repo_view.read_json("space_config.json")
+            assert json_data == {"tool": "gradio", "version": "4.x"}
+
         mock_open_codebase.assert_called_once_with(
             "https://huggingface.co/spaces/acme/demo"
         )
-        repo.exists.assert_called_once_with("space_config.json")
-        repo.read_json.assert_called_once_with("space_config.json")
-
-    @patch("model_audit_cli.resources.code_resource.open_codebase")
-    def test_open_json_not_found_raises(self, mock_open_codebase: MagicMock) -> None:
-        """Test that AppError is raised when JSON file is not found."""
-        cm = mock_open_codebase.return_value
-        repo = MagicMock()
-        repo.exists.return_value = False
-        cm.__enter__.return_value = repo
-
-        r = CodeResource("https://github.com/org/repo")
-        with pytest.raises(AppError) as ei:
-            _ = r.open_json("config.json")
-
-        err = ei.value
-        assert err.code == NOT_FOUND
-        assert "config.json" in str(err)
-        assert err.context is not None
-        assert err.context["url"] == "https://github.com/org/repo"
+        mock_context_manager.__enter__.assert_called_once()
+        mock_context_manager.__exit__.assert_called_once_with(None, None, None)

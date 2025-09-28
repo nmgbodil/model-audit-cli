@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from model_audit_cli.errors import NOT_FOUND, AppError
+from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.resources.dataset_resource import DatasetResource
 
 
@@ -23,36 +21,16 @@ class TestDatasetResource:
         mock_get.assert_called_once_with("bookcorpus/bookcorpus")
 
     @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_file_returns_text(self, mock_fetcher: MagicMock) -> None:
-        """Test that open_file returns text content from dataset files."""
+    def test_open_files_returns_context_manager(self, mock_fetcher: MagicMock) -> None:
+        """Test that open_files returns a context manager for RepoView."""
+        mock_context_manager = MagicMock()
+        mock_fetcher.return_value = mock_context_manager
+
         r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
+        result = r.open_files()
 
-        cm = mock_fetcher.return_value
-        repo_like = MagicMock()
-        repo_like.read_text.return_value = "# dataset readme\n"
-        cm.__enter__.return_value = repo_like
-
-        out = r.open_file("README.md")
-        assert out == "# dataset readme\n"
-
+        assert result is mock_context_manager
         mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
-        repo_like.read_text.assert_called_once_with("README.md")
-
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_json_file_returns_object(self, mock_fetcher: MagicMock) -> None:
-        """Test that open_json_file returns parsed JSON object from dataset files."""
-        r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-
-        cm = mock_fetcher.return_value
-        repo_like = MagicMock()
-        repo_like.read_json.return_value = {"splits": {"train": {"num_examples": 10}}}
-        cm.__enter__.return_value = repo_like
-
-        obj = r.open_json_file("dataset_info.json")
-        assert obj == {"splits": {"train": {"num_examples": 10}}}
-
-        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
-        repo_like.read_json.assert_called_once_with("dataset_info.json")
 
     @patch("model_audit_cli.resources.dataset_resource.HFClient.get_dataset_metadata")
     def test_fetch_metadata_cached(self, mock_get: MagicMock) -> None:
@@ -67,106 +45,39 @@ class TestDatasetResource:
         mock_get.assert_called_once_with("ns/ds")
 
     @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_file_success(self, mock_fetcher: MagicMock) -> None:
-        """Test successful file opening and content retrieval from dataset."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_text.return_value = "# dataset readme\n"
-        cm.__enter__.return_value = repo
-
-        r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-        out = r.open_file("README.md")
-
-        assert out == "# dataset readme\n"
-        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
-        repo.exists.assert_called_once_with("README.md")
-        repo.read_text.assert_called_once_with("README.md")
-
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_file_empty_string_is_valid(self, mock_fetcher: MagicMock) -> None:
-        """Test that empty string content is valid and returned correctly."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_text.return_value = ""  # empty content should still return
-        cm.__enter__.return_value = repo
-
-        r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-        out = r.open_file("EMPTY.md")
-
-        assert out == ""
-        repo.exists.assert_called_once_with("EMPTY.md")
-        repo.read_text.assert_called_once_with("EMPTY.md")
-
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_file_not_found_raises(self, mock_fetcher: MagicMock) -> None:
-        """Test that AppError is raised when file is not found in dataset."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = False
-        cm.__enter__.return_value = repo
-
-        r = DatasetResource("https://huggingface.co/datasets/ns/ds")
-        with pytest.raises(AppError) as ei:
-            _ = r.open_file("missing.txt")
-
-        err = ei.value
-        assert err.code == NOT_FOUND
-        assert "missing.txt" in str(err)
-        assert err.context is not None
-        assert "url" in err.context
-        assert err.context["url"].endswith("/datasets/ns/ds")
-
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_json_file_success(self, mock_fetcher: MagicMock) -> None:
-        """Test successful JSON file opening and content retrieval from dataset."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_json.return_value = {"splits": {"train": {"num_examples": 10}}}
-        cm.__enter__.return_value = repo
-
-        r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-        obj = r.open_json_file("dataset_info.json")
-
-        assert obj == {"splits": {"train": {"num_examples": 10}}}
-        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
-        repo.exists.assert_called_once_with("dataset_info.json")
-        repo.read_json.assert_called_once_with("dataset_info.json")
-
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_json_file_empty_object_is_valid(
+    def test_open_files_with_context_manager_usage(
         self, mock_fetcher: MagicMock
     ) -> None:
-        """Test that empty JSON object is valid and returned correctly."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = True
-        repo.read_json.return_value = {}  # empty JSON should still return
-        cm.__enter__.return_value = repo
+        """Test open_files context manager can be used to access repository files."""
+        # Create a mock RepoView
+        mock_repo_view = MagicMock(spec=RepoView)
+        mock_repo_view.exists.return_value = True
+        mock_repo_view.read_text.return_value = "# dataset readme\n"
+        mock_repo_view.read_json.return_value = {
+            "splits": {"train": {"num_examples": 10}}
+        }
+
+        # Setup context manager
+        mock_context_manager = MagicMock()
+        mock_context_manager.__enter__.return_value = mock_repo_view
+        mock_context_manager.__exit__.return_value = None
+        mock_fetcher.return_value = mock_context_manager
 
         r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-        obj = r.open_json_file("empty.json")
 
-        assert obj == {}
-        repo.exists.assert_called_once_with("empty.json")
-        repo.read_json.assert_called_once_with("empty.json")
+        with r.open_files() as repo_view:
+            # Test file existence check
+            exists = repo_view.exists("README.md")
+            assert exists is True
 
-    @patch("model_audit_cli.resources.dataset_resource.HFDatasetFetcher")
-    def test_open_json_file_not_found_raises(self, mock_fetcher: MagicMock) -> None:
-        """Test that AppError is raised when JSON file is not found in dataset."""
-        cm = mock_fetcher.return_value
-        repo = MagicMock()
-        repo.exists.return_value = False
-        cm.__enter__.return_value = repo
+            # Test reading text file
+            content = repo_view.read_text("README.md")
+            assert content == "# dataset readme\n"
 
-        r = DatasetResource("https://huggingface.co/datasets/bookcorpus/bookcorpus")
-        with pytest.raises(AppError) as ei:
-            _ = r.open_json_file("absent.json")
+            # Test reading JSON file
+            json_data = repo_view.read_json("dataset_info.json")
+            assert json_data == {"splits": {"train": {"num_examples": 10}}}
 
-        err = ei.value
-        assert err.code == NOT_FOUND
-        assert "absent.json" in str(err)
-        assert err.context is not None
-        assert err.context["url"].endswith("bookcorpus/bookcorpus")
+        mock_fetcher.assert_called_once_with("bookcorpus/bookcorpus")
+        mock_context_manager.__enter__.assert_called_once()
+        mock_context_manager.__exit__.assert_called_once_with(None, None, None)
