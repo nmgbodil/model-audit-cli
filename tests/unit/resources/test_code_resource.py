@@ -67,7 +67,9 @@ class TestCodeResource:
         result = r.open_files()
 
         assert result is mock_context_manager
-        mock_open_codebase.assert_called_once_with("https://github.com/org/repo")
+        mock_open_codebase.assert_called_once_with(
+            "https://github.com/org/repo", allow_patterns=None
+        )
 
     @patch("model_audit_cli.resources.code_resource.open_codebase")
     def test_open_files_with_context_manager_usage(
@@ -102,7 +104,7 @@ class TestCodeResource:
             assert json_data == {"tool": "gradio", "version": "4.x"}
 
         mock_open_codebase.assert_called_once_with(
-            "https://huggingface.co/spaces/acme/demo"
+            "https://huggingface.co/spaces/acme/demo", allow_patterns=None
         )
         mock_context_manager.__enter__.assert_called_once()
         mock_context_manager.__exit__.assert_called_once_with(None, None, None)

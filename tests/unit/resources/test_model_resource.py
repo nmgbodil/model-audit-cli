@@ -30,7 +30,9 @@ class TestModelResource:
         result = r.open_files()
 
         assert result is mock_context_manager
-        mock_fetcher.assert_called_once_with("google-bert/bert-base-uncased")
+        mock_fetcher.assert_called_once_with(
+            "google-bert/bert-base-uncased", allow_patterns=None
+        )
 
     @patch("model_audit_cli.resources.model_resource.HFClient.get_model_metadata")
     def test_fetch_metadata_cached(self, mock_get: MagicMock) -> None:
@@ -76,6 +78,8 @@ class TestModelResource:
             json_data = repo_view.read_json("config.json")
             assert json_data == {"a": 1, "b": [2, 3]}
 
-        mock_fetcher.assert_called_once_with("google-bert/bert-base-uncased")
+        mock_fetcher.assert_called_once_with(
+            "google-bert/bert-base-uncased", allow_patterns=None
+        )
         mock_context_manager.__enter__.assert_called_once()
         mock_context_manager.__exit__.assert_called_once_with(None, None, None)

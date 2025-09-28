@@ -31,6 +31,7 @@ def open_codebase(
     *,
     ref: Optional[str] = None,
     token: Optional[str] = None,
+    allow_patterns: Optional[Iterable[str]] = None,
 ) -> ContextManager[RepoView]:
     """Open a codebase and return a context manager for interacting with it.
 
@@ -54,7 +55,9 @@ def open_codebase(
     """
     host, parts = _parse(url)
     if _is_hf_space(host, parts):
-        return _HFSpaceFetcher(f"{parts[1]}/{parts[2]}", _extract_rev(parts))
+        return _HFSpaceFetcher(
+            f"{parts[1]}/{parts[2]}", _extract_rev(parts), allow_patterns=allow_patterns
+        )
     if host.endswith("github.com"):
         owner, repo = parts[0], parts[1]
         revision = _extract_rev(parts) or ref
