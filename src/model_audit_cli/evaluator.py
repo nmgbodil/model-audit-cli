@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
+from model_audit_cli.metrics_engine import flatten_to_ndjson, compute_all_metrics
 
 
 def main(path: str) -> None:
@@ -15,7 +15,7 @@ def main(path: str) -> None:
 
         record: dict[str, Any] = {"name": url, "category": "MODEL"}
 
-        results = run_metrics({"url": url})
+        results = compute_all_metrics({"url": url})
         record.update(flatten_to_ndjson(results))
 
         print(json.dumps(record))

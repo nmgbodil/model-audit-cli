@@ -1,55 +1,50 @@
 import time
-from typing import Any, Mapping, Optional
+from typing import Any, Dict
 
-from model_audit_cli.metrics.types import MetricResult, register
+from .base_metric import Metric
 
 
-@register("ramp_up_time")
-def ramp_up_time(model: Mapping[str, Any], readme_file: Optional[str] = None) -> dict:
-    """Compute ramp-up time score.
+class RampUpTime(Metric):
+    """Calculate the ramp-up time score for a model."""
 
-    Args:
-        model: The model metadata to evaluate.
-        readme_file: The content of the README file or the file name.
+    def __init__(self) -> None:
+        super().__init__(name="ramp_up_time")
 
-    Returns:
-        dict: Dictionary containing the score and latency to match the Metrics class.
-    """
-    t0 = time.perf_counter()
+    def compute(self, model: Dict[str, Any]) -> "RampUpTime":
+        """Compute ramp-up time score and latency.
 
-    # Read README content if a file name is provided
-    if readme_file and isinstance(readme_file, str):
-        try:
-            with open(readme_file, "r", encoding="utf-8") as file:
-                readme_text = file.read()
-        except FileNotFoundError:
-            readme_text = ""
-    else:
-        readme_text = model.get("readme_text") or ""
+        Args:
+            model: Dictionary with possible keys:
+                - "readme_text": str (contents of README)
+                - "likes": int (number of likes)
 
-    # Calculate readme score
-    readme_score = min(len(readme_text) / 5000.0, 1.0)
+        Returns:
+            A tuple containing:
+                - score (float): final ramp-up time score in [0,1]
+                - latency_ms (float): computation time in milliseconds
+        """
+        t0 = time.perf_counter()
 
-    # Calculate examples score
-    example_files = model.get("example_files") or []
-    examples_score = (
-        1.0
-        if any(f.endswith(".ipynb") or "example" in f.lower() for f in example_files)
-        else 0.0
-    )
+        readme_text: str = model.get("readme_text", "")
+        example_files: list[str] = model.get("example_files", [])
+        likes: int = model.get("likes", 0)
 
-    # Calculate likes score
-    likes = int(model.get("likes") or 0)
-    likes_score = min(likes / 1000.0, 1.0)
+        readme_score = min(len(readme_text) / 5000.0, 1.0)
+        examples_score = (
+            1.0
+            if any(
+                f.endswith(".ipynb") or "example" in f.lower() for f in example_files
+            )
+            else 0.0
+        )
+        likes_score = min(likes / 1000.0, 1.0)
 
-    # Compute final score
-    score = 0.4 * readme_score + 0.35 * examples_score + 0.25 * likes_score
+        self.value = 0.4 * readme_score + 0.35 * examples_score + 0.25 * likes_score
+        self.latency_ms = (time.perf_counter() - t0) * 1000.0
+        self.details = {}
 
-    # Calculate latency
-    latency_ms = (time.perf_counter() - t0) * 1000.0
+        return self
 
-    # Return a dictionary matching the Metrics class structure
-    return {
-        "ramp_up_time": float(score),
-        "ramp_up_time_latency": int(latency_ms),
-    }
+def ramp_up_time(model: dict[str, Any]) -> RampUpTime:
+    """Compatibility wrapper so tests calling ramp_up_time(model) still work."""
+    return RampUpTime().compute(model)

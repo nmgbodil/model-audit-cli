@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pytest
 
 from model_audit_cli.metrics.ramp_up_time import ramp_up_time
-from model_audit_cli.metrics_engine import flatten_to_ndjson, run_metrics
+from model_audit_cli.metrics_engine import flatten_to_ndjson, compute_all_metrics
 
 
 def test_max() -> None:
@@ -47,7 +47,7 @@ def test_runner_and_flattner() -> None:
         "example_files": ["examples/train.py"],
         "likes": 42,
     }
-    results = run_metrics(rec)
+    results = compute_all_metrics(rec)
     flat = flatten_to_ndjson(results)
     assert "ramp_up_time" in flat
     assert "ramp_up_time_latency" in flat
