@@ -3,15 +3,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Mapping, Union
 
-from model_audit_cli.metrics.ramp_up_time import ramp_up_time
-
 from .metrics.types import METRICS, MetricFunction, MetricResult, MetricValue
 
 FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL") == "1"
-
-METRIC_FUNCS = {
-    "ramp_up_time": ramp_up_time,
-}
 
 
 def _clamp(x: float) -> float:
@@ -49,27 +43,27 @@ def run_metrics(
     Uses parallel execution unless FORCE_SEQUENTIAL=1.
     """
     results: Dict[str, MetricResult] = {}
-    metric_names = include if include else set(METRICS.keys())
+    metric_names = include or set(METRICS.keys())
+    funcs: Dict[str, MetricFunction] = {
+        m: f for m, f in METRICS.items() if m in metric_names
+    }
 
     if FORCE_SEQUENTIAL:
         for metric, func in METRICS.items():
-            if metric in metric_names:
-                results[metric] = _safe_run(metric, func, model)
-
+            results[metric] = _safe_run(metric, func, model)
     else:
         with ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(_safe_run, metric, func, model): metric
-                for metric, func in METRIC_FUNCS.items()
-                if metric in metric_names
+                for metric, func in funcs.intems()
             }
+
             for future in as_completed(futures):
-                metric = futures[future]
+                metric: str = futures[future]
                 try:
                     results[metric] = future.result()
                 except Exception as e:
                     results[metric] = MetricResult(metric, 0.0, 0.0, {"error": str(e)})
-
     return results
 
 
