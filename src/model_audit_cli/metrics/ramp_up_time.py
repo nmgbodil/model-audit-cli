@@ -9,7 +9,6 @@ MODEL_EXTENSIONS: list[str] = [".bin", ".h5", ".pt", ".onnx", ".tflite"]
 
 class RampUpTime(Metric):
     """Calculate the ramp-up time score for a model."""
-
     def __init__(self) -> None:
         """Initialize the RampUpTime metric."""
         super().__init__(name="ramp_up_time")
@@ -59,5 +58,5 @@ class RampUpTime(Metric):
 
 
 def ramp_up_time(model: Model) -> RampUpTime:
-    """Compatibility wrapper so tests calling ramp_up_time(model) still work."""
+    """Compatibility wrapper so tests calling ramp_up_time still work."""
     return RampUpTime().compute(model)
