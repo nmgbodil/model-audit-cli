@@ -6,7 +6,7 @@ class Metric:
 
     name: str
     value: Union[float, Dict[str, float]]
-    latency_ms: float
+    latency_ms: int
     details: Dict[str, Any]
 
     def __init__(self, name: str) -> None:
