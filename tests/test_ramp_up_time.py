@@ -1,56 +1,78 @@
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Iterator, Literal
 
 import pytest
 
-from model_audit_cli.metrics.ramp_up_time import ramp_up_time
-from model_audit_cli.metrics_engine import compute_all_metrics, flatten_to_ndjson
+from model_audit_cli.metrics.ramp_up_time import RampUpTime
 
 
-def test_max() -> None:
-    """If README is long, examples exist, and likes are high → score caps at 1.0."""
-    rec: Dict[str, Any] = {
-        "readme_text": "x" * 6000,
-        "example_files": ["examples/run.py", "demo.ipynb"],
-        "likes": 1000,
-    }
-    res = ramp_up_time(rec)
-    assert isinstance(res.value, float)
-    assert 0.0 <= res.value <= 1.0
-    assert pytest.approx(res.value, rel=1e-9) == 1.0
-    assert res.details["readme_score"] == 1.0
-    assert res.details["examples_score"] == 1.0
-    assert res.details["likes_score"] == 1.0
-    assert res.latency_ms >= 0.0
+def make_fake_model(
+    tmp_path: Path, with_readme: bool = True, num_model_files: int = 0
+) -> Any:
+    """Helper to create a fake Model-like object for testing."""
+
+    repo_root = tmp_path
+    if with_readme:
+        (repo_root / "README.md").write_text("This is a test README file\n" * 100)
+
+    # add model files
+    (repo_root / "weights").mkdir(exist_ok=True)
+    for i in range(num_model_files):
+        (repo_root / "weights" / f"model_{i}.bin").write_text("fake-binary")
+
+    class FakeModel:
+        def __init__(self, root: Path) -> None:
+            self.root = root
+
+        def open_files(self) -> Any:
+            root = self.root
+
+            class Files:
+                def __enter__(self) -> "Files":
+                    return self
+
+                def __exit__(
+                    self,
+                    exc_type: type[BaseException] | None,
+                    exc: BaseException | None,
+                    tb: Any,
+                ) -> Literal[False]:
+                    return False
+
+                def file_exists(self, path: str) -> bool:
+                    return (root / path).exists()
+
+                def read_text(self, path: str, errors: str = "ignore") -> str:
+                    return (root / path).read_text(errors=errors)
+
+                def glob(self, pattern: str) -> list[Path]:
+                    return list(root.glob(pattern))
+
+            return Files()
+
+    return FakeModel(repo_root)
 
 
-def test_weighted_combo() -> None:
-    """Weighted combination yields expected score.
+def test_compute_with_readme_and_models(tmp_path: Path) -> None:
+    fake_model = make_fake_model(tmp_path, with_readme=True, num_model_files=2)
 
-    README ~2500 chars → 0.5
-    No examples → 0.0
-    Likes 500 → 0.5
-    Expected = 0.4*0.5 + 0.35*0.0 + 0.25*0.5 = 0.325
-    """
-    rec: Dict[str, Any] = {"readme_text": "x" * 2500, "example_files": [], "likes": 500}
-    res = ramp_up_time(rec)
-    assert isinstance(res.value, float)
-    assert pytest.approx(res.value, rel=1e-6) == 0.325
-    assert pytest.approx(res.details["readme_score"], rel=1e-9) == 0.5
-    assert res.details["examples_score"] == 0.0
-    assert pytest.approx(res.details["likes_score"], rel=1e-9) == 0.5
+    metric = RampUpTime()
+    metric.compute(fake_model)
+
+    assert isinstance(metric.value, float)
+    assert 0 < metric.value <= 1
+    assert metric.details["readme_length"] > 0
+    assert metric.details["num_models"] == 2
+    assert "readme_score" in metric.details
+    assert "models_score" in metric.details
 
 
-def test_runner_and_flattner() -> None:
-    """Engine runs metric and flattener emit <name> and <name>_latency."""
-    rec: Dict[str, Any] = {
-        "readme_text": "readme " * 800,
-        "example_files": ["examples/train.py"],
-        "likes": 42,
-    }
-    results = compute_all_metrics(rec)
-    flat = flatten_to_ndjson(results)
-    assert "ramp_up_time" in flat
-    assert "ramp_up_time_latency" in flat
-    assert isinstance(flat["ramp_up_time"], float)
-    assert 0.0 <= flat["ramp_up_time"] <= 1.0
-    assert isinstance(flat["ramp_up_time_latency"], int)
+def test_compute_with_no_files(tmp_path: Path) -> None:
+    fake_model = make_fake_model(tmp_path, with_readme=False, num_model_files=0)
+
+    metric = RampUpTime()
+    metric.compute(fake_model)
+
+    assert metric.value == 0.0
+    assert metric.details["readme_length"] == 0
+    assert metric.details["num_models"] == 0
