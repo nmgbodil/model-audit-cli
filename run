@@ -45,13 +45,13 @@ def _run_pytest() -> int:
     junit = "tests/_junit.xml"
     cov   = "tests/_coverage.xml"
     cmd = [
-        sys.executable, "-m", "pytest",
+        "python3", "-m", "pytest",
         f"--junitxml={junit}",
         "--cov=src",                     # works with your src/ layout
         f"--cov-report=xml:{cov}",
         "-q",
     ]
-    print("[test] running:", " ".join(cmd))
+    print("[test] running:", " ".join(cmd), file=sys.stderr())
     return subprocess.run(cmd, check=False).returncode
 
 def _print_summary(pytest_rc: int) -> None:
