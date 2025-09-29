@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import statistics
-import time
 from typing import Dict, Optional
 
 from model_audit_cli.metrics.base_metric import Metric
@@ -36,7 +35,6 @@ class NetScore(Metric):
         Returns:
             Dict with individual metric values, latencies, and net_score fields.
         """
-        start = time.perf_counter()
         self.value = 0
 
         for metric in metrics:
@@ -47,7 +45,6 @@ class NetScore(Metric):
                 continue
             if isinstance(metric.value, float):
                 self.value += METRIC_WEIGHTS[metric.name] * metric.value
-        self.latency_ms = int(round((time.perf_counter() - start) * 1000))
 
 
 if __name__ == "__main__":
