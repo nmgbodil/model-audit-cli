@@ -1,7 +1,7 @@
 import model_audit_cli.metrics_engine as metrics_engine
 from model_audit_cli.models import Model
 from model_audit_cli.resources.model_resource import ModelResource
-
+from model_audit_cli.log import logger
 
 def test_engine_constant_output() -> None:
     """Dummy test engine."""
