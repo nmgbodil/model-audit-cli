@@ -28,7 +28,7 @@ class Size(Metric):
 
         Sets up the metric with the name "size" for identification.
         """
-        super().__init__(name="size")
+        super().__init__(name="size_score")
 
     def compute(self, model: Model) -> None:
         """Compute the size metric for a given model.

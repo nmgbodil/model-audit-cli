@@ -15,7 +15,7 @@ METRIC_WEIGHTS: Dict[str, float] = {
     "dataset_quality": 0.10,
     "code_quality": 0.10,
     "performance_claims": 0.10,
-    "size": 0.10,
+    "size_score": 0.10,
 }
 
 
@@ -40,7 +40,7 @@ class NetScore(Metric):
         self.value = 0
 
         for metric in metrics:
-            if metric.name == "size" and isinstance(metric.value, dict):
+            if metric.name == "size_score" and isinstance(metric.value, dict):
                 self.value += METRIC_WEIGHTS[metric.name] * statistics.mean(
                     metric.value.values()
                 )
