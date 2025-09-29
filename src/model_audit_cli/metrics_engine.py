@@ -3,6 +3,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict
 
+from model_audit_cli.metrics.net_score import NetScore
 from model_audit_cli.models import Model
 
 from .metrics.base_metric import Metric
@@ -49,10 +50,12 @@ def compute_all_metrics(
 
 def flatten_to_ndjson(results: Dict[str, Metric]) -> Dict[str, Any]:
     """Convert Metric objects into NDJSON-style flat dict."""
+    net_score = NetScore()
+    net_score.evaluate(list(results.values()))
+    results[net_score.name] = net_score
     out: Dict[str, Any] = {}
     for metric in results.values():
         out[metric.name] = metric.value
         out[f"{metric.name}_latency"] = int(round(metric.latency_ms))
-        if metric.details:
-            out[f"{metric.name}_details"] = metric.details
+
     return out
