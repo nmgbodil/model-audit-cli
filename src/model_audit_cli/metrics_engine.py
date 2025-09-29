@@ -21,6 +21,13 @@ def _safe_run(metric: Metric, model: Model) -> Metric:
         metric.value = 0.0
         metric.latency_ms = int((time.perf_counter() - start) * 1000.0)
         metric.details = {"error": str(e)}
+        if metric.name == "size_score":
+            metric.value = {
+                "raspberry_pi": 0.0,
+                "jetson_nano": 0.0,
+                "desktop_pc": 0.0,
+                "aws_server": 0.0,
+            }
         # raise e
         return metric
 
