@@ -1,6 +1,7 @@
 import time
 from typing import Dict
 
+from log import logger
 from model_audit_cli.models import Model
 
 from .base_metric import Metric
@@ -40,21 +41,33 @@ class RampUpTime(Metric):
 
     def compute(self, model: Model) -> None:
         """Compute the ramp-up time score."""
+        logger.info("Computing RampUpTime metric...")
         t0: float = time.perf_counter()
+        try:
+            readme: str = self._open_readme(model)
+            num_models: int = self._count_models(model)
+            scores: Dict[str, float] = self.calculate_score(readme, num_models)
 
-        readme: str = self._open_readme(model)
-        num_models: int = self._count_models(model)
-        scores: Dict[str, float] = self.calculate_score(readme, num_models)
+            # weighted score
+            self.value = float(
+                0.6 * scores["readme_score"] + 0.4 * scores["models_score"]
+            )
+            self.latency_ms = int(round((time.perf_counter() - t0) * 1000.0))
+            self.details = {
+                "readme_length": len(readme),
+                "num_models": num_models,
+                **scores,
+            }
 
-        # weighted score
-        self.value = float(0.6 * scores["readme_score"] + 0.4 * scores["models_score"])
-        self.latency_ms = int(round((time.perf_counter() - t0) * 1000.0))
-        self.details = {
-            "readme_length": len(readme),
-            "num_models": num_models,
-            **scores,
-        }
-        return None
+            logger.debug(
+                f"RampUpTime details: readme_len={len(readme)}, "
+                f"num_models={num_models}, scores={scores}, final={self.value}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing RampUpTime metric: {e}")
+            self.value = 0.0
+            self.latency_ms = int(round((time.perf_counter() - t0) * 1000.0))
+            self.details = {"error": str(e)}
 
 
 def ramp_up_time(model: Model) -> None:

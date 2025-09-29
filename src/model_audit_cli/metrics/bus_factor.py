@@ -1,10 +1,10 @@
 # src/model_audit_cli/metrics/bus_factor.py
-
 import math
 import time
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
+from log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 
@@ -84,27 +84,44 @@ class BusFactor(Metric):
 
     def compute(self, model: Model) -> None:
         """Compute the Bus Factor score for the given model."""
+        logger.info("Computing Bus Factor metric...")
         start_time = time.time()
-        n_code: int = getattr(model, "n_code", 1)  # safe fallback
+        try:
+            n_code: int = getattr(model, "n_code", 1)  # safe fallback
 
-        last_mods = self._get_last_modified(model)
-        contributors = self._get_contributors(model)
+            last_mods = self._get_last_modified(model)
+            contributors = self._get_contributors(model)
 
-        # Pick freshest available date (most recent string)
-        freshest = None
-        for candidate in [last_mods["code"], last_mods["model"], last_mods["dataset"]]:
-            if candidate and (freshest is None or candidate > freshest):
-                freshest = candidate
+            # Pick freshest available date (most recent string)
+            freshest = None
+            for candidate in [
+                last_mods["code"],
+                last_mods["model"],
+                last_mods["dataset"],
+            ]:
+                if candidate and (freshest is None or candidate > freshest):
+                    freshest = candidate
 
-        # Compute score
-        score_parts = self.compute_score(contributors, n_code, freshest)
+            # Compute score
+            score_parts = self.compute_score(contributors, n_code, freshest)
 
-        # Save results
-        self.value = score_parts["final_score"]
-        self.latency_ms = int(round((time.time() - start_time) * 1000))
-        self.details = {
-            **score_parts,
-            "lastModified_model": last_mods["model"],
-            "lastModified_dataset": last_mods["dataset"],
-            "last_commit_date": last_mods["code"],
-        }
+            # Save results
+            self.value = score_parts["final_score"]
+            self.latency_ms = int(round((time.time() - start_time) * 1000))
+            self.details = {
+                **score_parts,
+                "lastModified_model": last_mods["model"],
+                "lastModified_dataset": last_mods["dataset"],
+                "last_commit_date": last_mods["code"],
+            }
+
+            logger.debug(
+                f"BusFactor details: contributors={contributors}, "
+                f"n_code={n_code}, freshest={freshest}, score={self.value}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing Bus Factor: {e}")
+            # still set default values to avoid breaking NDJSON
+            self.value = 0.0
+            self.latency_ms = int(round((time.time() - start_time) * 1000))
+            self.details = {"error": str(e)}

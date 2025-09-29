@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from log import logger
 from model_audit_cli.metrics_engine import compute_all_metrics, flatten_to_ndjson
 from model_audit_cli.models import Metrics
 from model_audit_cli.url_handler import URLHandler
