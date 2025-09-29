@@ -10,7 +10,8 @@ dependencies = [
   "requests>=2.32",
   "pydantic>=2, <3",
   "types-requests>=2.32",
-  "huggingface-hub>=0.35"
+  "huggingface-hub>=0.35",
+  "python-dotenv>=1.1.1"
 ]
 
 [project.optional-dependencies]

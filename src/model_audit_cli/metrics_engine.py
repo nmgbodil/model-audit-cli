@@ -53,6 +53,5 @@ def flatten_to_ndjson(results: Dict[str, Metric]) -> Dict[str, Any]:
     for metric in results.values():
         out[metric.name] = metric.value
         out[f"{metric.name}_latency"] = int(round(metric.latency_ms))
-        if metric.details:
-            out[f"{metric.name}_details"] = metric.details
+
     return out

@@ -1,8 +1,9 @@
-from typing import Any, Optional
+from typing import Any, ContextManager, Iterable, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
+from model_audit_cli.adapters.repo_view import RepoView
 from model_audit_cli.errors import UNSUPPORTED_URL, AppError
 
 
@@ -26,5 +27,7 @@ class _BaseResource(BaseModel):
     def fetch_metadata(self) -> dict[str, Any]:
         raise NotImplementedError
 
-    def open_file(self, filename: str) -> str:
+    def open_files(
+        self, allow_patterns: Optional[Iterable[str]] = None
+    ) -> ContextManager[RepoView]:
         raise NotImplementedError

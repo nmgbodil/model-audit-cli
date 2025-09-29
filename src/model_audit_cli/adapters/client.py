@@ -51,8 +51,7 @@ class _Client:
                 response = requests.get(url, headers=headers)
                 response.raise_for_status()
                 return response.json()
-            except requests.exceptions.HTTPError as e:
-                print(e)
+            except requests.exceptions.HTTPError:
                 if response.status_code >= 500 and attempt < retries:
                     wait_time = backoff * 2**attempt
                     time.sleep(wait_time)
@@ -65,8 +64,7 @@ class _Client:
                     time.sleep(float(wait_time))
                     continue
                 break
-            except requests.exceptions.RequestException as e:
-                print(e)
+            except requests.exceptions.RequestException:
                 if attempt < retries:
                     wait_time = backoff * 2**attempt
                     time.sleep(wait_time)
