@@ -101,7 +101,14 @@ class TestGitHubCodeFetcher:
             url="https://api.github.com/repos/org/repo",
         )
 
-        # 2) Tarball for that branch (binary)
+        # 2) Contributors API call (returns empty list)
+        contributors_resp = make_response(
+            status=200,
+            body=[],
+            url="https://api.github.com/repos/org/repo/contributors",
+        )
+
+        # 3) Tarball for that branch (binary)
         tgz = build_tgz({"README.md": b"# GH default branch\n"})
         tar_resp = make_response(
             status=200,
@@ -110,19 +117,21 @@ class TestGitHubCodeFetcher:
         )
         tar_resp._content = tgz
 
-        # Return them in order: API first, then tarball
-        mock_get.side_effect = [api_resp, tar_resp]
+        # Return them in order: API first, then contributors, then tarball
+        mock_get.side_effect = [api_resp, contributors_resp, tar_resp]
 
         url = "https://github.com/org/repo"  # no /tree/<rev> and no ref
         with open_codebase(url) as view:
             assert view.read_text("README.md").startswith("# GH default")
 
-        # Assert both calls happened as expected
-        assert mock_get.call_count == 2
+        # Assert all three calls happened as expected
+        assert mock_get.call_count == 3
         first_url = mock_get.call_args_list[0][0][0]
         second_url = mock_get.call_args_list[1][0][0]
+        third_url = mock_get.call_args_list[2][0][0]
         assert first_url == "https://api.github.com/repos/org/repo"
-        assert "/repos/org/repo/tarball/main" in second_url
+        assert second_url == "https://api.github.com/repos/org/repo/contributors"
+        assert "/repos/org/repo/tarball/main" in third_url
 
 
 class TestGitLabCodeFetcher:
@@ -167,7 +176,18 @@ class TestGitLabCodeFetcher:
             body={"default_branch": "main"},
             url="https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fproj",
         )
-        # 2) archive tar.gz for that branch
+
+        # 2) Contributors API call (returns empty list)
+        contributors_resp = make_response(
+            status=200,
+            body=[],
+            url=(
+                "https://gitlab.com/api/v4/projects/group%2Fsubgroup%2Fproj/"
+                "repository/contributors"
+            ),
+        )
+
+        # 3) archive tar.gz for that branch
         tgz = build_tgz({"README.md": b"# GL default branch\n"})
         archive_resp = make_response(
             status=200,
@@ -179,14 +199,13 @@ class TestGitLabCodeFetcher:
         )
         archive_resp._content = tgz
 
-        mock_get.side_effect = [default_branch_resp, archive_resp]
+        mock_get.side_effect = [default_branch_resp, contributors_resp, archive_resp]
 
         url = "https://gitlab.com/group/subgroup/proj"  # no /tree/<rev> and no ref=
         with open_codebase(url) as view:
             assert view.read_text("README.md").startswith("# GL default")
 
-        # Assertions: two calls, first to projects API, second to archive with sha=main
-        assert mock_get.call_count == 2
+        assert mock_get.call_count == 3
 
         first_url = mock_get.call_args_list[0][0][0]
         assert "/api/v4/projects/" in first_url
@@ -194,8 +213,12 @@ class TestGitLabCodeFetcher:
 
         second_url = mock_get.call_args_list[1][0][0]
         assert "/api/v4/projects/" in second_url
-        assert "repository/archive.tar.gz" in second_url
-        assert "sha=main" in second_url
+        assert "repository/contributors" in second_url
+
+        third_url = mock_get.call_args_list[2][0][0]
+        assert "/api/v4/projects/" in third_url
+        assert "repository/archive.tar.gz" in third_url
+        assert "sha=main" in third_url
 
 
 @patch("model_audit_cli.adapters.code_fetchers.requests.get")

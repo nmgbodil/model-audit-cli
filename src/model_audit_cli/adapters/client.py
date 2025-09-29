@@ -114,6 +114,8 @@ class HFClient(_Client):
                 message="Unexpected shape for model metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
     def get_dataset_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
@@ -136,6 +138,8 @@ class HFClient(_Client):
                 message="Unexpected shape for dataset metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
     def get_space_metadata(self, repo_id: str, retries: int = 0) -> dict[str, Any]:
@@ -158,6 +162,8 @@ class HFClient(_Client):
                 message="Unexpected shape for space metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        data["num_contributors"] = None
         return data
 
 
@@ -185,13 +191,15 @@ class GitHubClient(_Client):
     def get_metadata(
         self, url: str, retries: int = 0, token: Optional[str] = None
     ) -> dict[str, Any]:
-        """Retrieve metadata for a specific model from the GitHub API.
+        """Retrieve metadata for a specific repository from the GitHub API.
 
         Args:
-            repo_id (str): The repository ID of the model.
+            url: The GitHub repository URL
+            retries: Number of retry attempts for failed requests
+            token: Optional GitHub API token for authentication
 
         Returns:
-            dict[str, Any]: The metadata of the model.
+            dict[str, Any]: The metadata of the repository.
 
         Raises:
             AppError: If the response data is not a dictionary or if the request fails.
@@ -208,7 +216,39 @@ class GitHubClient(_Client):
                 message="Unexpected shape for GitHub metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        # Try to get contributors, but don't fail if it doesn't work
+        try:
+            data["num_contributors"] = self._get_number_contributors(
+                owner, repo, retries=retries, token=token
+            )
+        except Exception:
+            data["num_contributors"] = None
+
         return data
+
+    def _get_number_contributors(
+        self, owner: str, repo: str, retries: int = 0, token: Optional[str] = None
+    ) -> Optional[int]:
+        """Get the number of contributors for a GitHub repository.
+
+        Args:
+            owner: The repository owner (username or organization)
+            repo: The repository name
+            retries: Number of retry attempts for failed requests
+            token: Optional GitHub API token for authentication
+
+        Returns:
+            Number of contributors, or None if the request fails
+        """
+        path = f"/{owner}/{repo}/contributors"
+        headers = {"Accept": "application/vnd.github+json"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, list):
+            return None
+        return len(data)
 
 
 class GitLabClient(_Client):
@@ -235,13 +275,15 @@ class GitLabClient(_Client):
     def get_metadata(
         self, url: str, retries: int = 0, token: Optional[str] = None
     ) -> dict[str, Any]:
-        """Retrieve metadata for a specific model from the GitLab API.
+        """Retrieve metadata for a specific repository from the GitLab API.
 
         Args:
-            repo_id (str): The repository ID of the model.
+            url: The GitLab repository URL
+            retries: Number of retry attempts for failed requests
+            token: Optional GitLab API token for authentication
 
         Returns:
-            dict[str, Any]: The metadata of the model.
+            dict[str, Any]: The metadata of the repository.
 
         Raises:
             AppError: If the response data is not a dictionary or if the request fails.
@@ -256,4 +298,34 @@ class GitLabClient(_Client):
                 message="Unexpected shape for GitLab metadata.",
                 context={"url": f"{self.base_url}{path}", "type": type(data).__name__},
             )
+
+        # Try to get contributors, but don't fail if it doesn't work
+        try:
+            data["num_contributors"] = self._get_number_contributors(
+                ns_name, retries, token
+            )
+        except Exception:
+            data["num_contributors"] = None
+
         return data
+
+    def _get_number_contributors(
+        self, ns_name: str, retries: int = 0, token: Optional[str] = None
+    ) -> Optional[int]:
+        """Get the number of contributors for a GitLab repository.
+
+        Args:
+            ns_name: The namespace and project name (e.g., "group/project")
+            retries: Number of retry attempts for failed requests
+            token: Optional GitLab API token for authentication
+
+        Returns:
+            Number of contributors, or None if the request fails
+        """
+        path = f"/{quote_plus(ns_name)}/repository/contributors"  # URL-encoded id
+        headers = {"PRIVATE-TOKEN": token} if token else {}
+
+        data = self._get_json(path, retries, headers=headers)
+        if not isinstance(data, list):
+            return None
+        return len(data)
