@@ -4,9 +4,9 @@ import subprocess
 import time
 from typing import Any
 
-from log import logger
 from model_audit_cli.adapters.code_fetchers import open_codebase
 from model_audit_cli.adapters.repo_view import RepoView
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 from model_audit_cli.resources.code_resource import CodeResource

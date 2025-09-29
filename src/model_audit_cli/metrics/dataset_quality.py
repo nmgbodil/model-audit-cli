@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, Optional
 
-from log import logger
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 

@@ -1,6 +1,6 @@
 import time
 
-from log import logger
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 
