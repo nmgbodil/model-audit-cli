@@ -45,7 +45,7 @@ class TestHFModelFetcher:
         (snap / "README.md").write_text("# ok\n", encoding="utf-8")
         # Large file (deleted)
         big = snap / "pytorch_model.bin"
-        big.write_bytes(b"x" * (513 * 1024))
+        big.write_bytes(b"x" * (513 * 1024 * 1024))
 
         snapshot_download_mock.return_value = str(snap)
 

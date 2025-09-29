@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import os
 import tempfile
 from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Iterable, Optional
+
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ.pop("HF_HUB_ENABLE_HF_TRANSFER", None)
 
 from huggingface_hub import snapshot_download
 
@@ -21,7 +25,7 @@ MODEL_ALLOW = [
 ]
 
 # NOTE: Move MAX_FILE_BYTES to .env
-MAX_FILE_BYTES = 512 * 1024
+MAX_FILE_BYTES = 512 * 1024 * 1024
 
 
 class _BaseSnapshotFetcher(AbstractContextManager[RepoView]):
@@ -69,6 +73,7 @@ class _BaseSnapshotFetcher(AbstractContextManager[RepoView]):
                 repo_type=self.repo_type,
                 revision=self.revision,
                 allow_patterns=self.allow_patterns,
+                tqdm_class=None,
                 local_dir=str(target),
             )
         )
