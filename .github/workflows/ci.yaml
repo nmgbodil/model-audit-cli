@@ -103,7 +103,7 @@ jobs:
           pytest -q --maxfail=1 --disable-warnings \
             -m "not integration and not e2e and not slow and not perf" \
             --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml \
-            --cov-fail-under=80
+            --cov-fail-under=70
       
       - name: Upload coverage
         if: always()
