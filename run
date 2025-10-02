@@ -44,13 +44,13 @@ def _run_pytest() -> int:
     junit = "tests/_junit.xml"
     cov   = "tests/_coverage.xml"
     cmd = [
-        sys.executable, "-m", "pytest",
+        "python3", "-m", "pytest",
         f"--junitxml={junit}",
         "--cov=src",                     # works with your src/ layout
         f"--cov-report=xml:{cov}",
         "-q",
     ]
-    print("[test] running:", " ".join(cmd))
+    print("[test] running:", " ".join(cmd), file=sys.stderr())
     return subprocess.run(cmd, check=False).returncode
 
 def _print_summary(pytest_rc: int) -> None:
@@ -103,7 +103,7 @@ def cmd_urls_file(url_file: str) -> int:
             model.dataset = url_handler.check_for_shared_dataset(model, models[i - 1])
         results = compute_all_metrics(model)
         ndjson = flatten_to_ndjson(results)
-        ndjson["name"] = model.model.url
+        ndjson["name"] = model.model._repo_id.split("/")[1]
         ndjson["category"] = "MODEL"
 
         print(json.dumps(ndjson))
