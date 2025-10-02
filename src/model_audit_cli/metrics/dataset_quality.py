@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, Optional
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 
@@ -71,36 +72,49 @@ class DatasetQuality(Metric):
     # --- Main compute ---
     def compute(self, model: Model) -> None:
         """Compute dataset quality for a given model and update fields."""
+        logger.info("Computing DatasetQuality metric...")
         start = time.time()
+        try:
+            if model.dataset is None:
+                self.value = 0.0
+                self.details = {"error": "No dataset provided"}
+                self.latency_ms = int(round((time.time() - start) * 1000))
+                logger.warning("No dataset provided for DatasetQuality metric")
+                return
 
-        if model.dataset is None:
-            self.value = 0.0
-            self.details = {"error": "No dataset provided"}
+            dataset_meta: Dict[str, Any] = model.dataset.fetch_metadata()
+
+            doc_score = self._documentation_score(dataset_meta)
+            lic_score = self._license_and_citation_score(dataset_meta)
+            fresh_score = self._freshness_score(dataset_meta)
+            comm_score = self._community_score(dataset_meta)
+            ex_score = self._example_code_score(dataset_meta)
+
+            total_score = (
+                0.3 * doc_score
+                + 0.2 * lic_score
+                + 0.2 * fresh_score
+                + 0.2 * comm_score
+                + 0.1 * ex_score
+            )
+
+            self.value = round(total_score, 3)
+            self.details = {
+                "documentation": doc_score,
+                "license": lic_score,
+                "freshness": fresh_score,
+                "community": comm_score,
+                "example_code": ex_score,
+            }
             self.latency_ms = int(round((time.time() - start) * 1000))
-            return
 
-        dataset_meta: Dict[str, Any] = model.dataset.fetch_metadata()
-
-        doc_score = self._documentation_score(dataset_meta)
-        lic_score = self._license_and_citation_score(dataset_meta)
-        fresh_score = self._freshness_score(dataset_meta)
-        comm_score = self._community_score(dataset_meta)
-        ex_score = self._example_code_score(dataset_meta)
-
-        total_score = (
-            0.3 * doc_score
-            + 0.2 * lic_score
-            + 0.2 * fresh_score
-            + 0.2 * comm_score
-            + 0.1 * ex_score
-        )
-
-        self.value = round(total_score, 3)
-        self.details = {
-            "documentation": doc_score,
-            "license": lic_score,
-            "freshness": fresh_score,
-            "community": comm_score,
-            "example_code": ex_score,
-        }
-        self.latency_ms = int(round((time.time() - start) * 1000))
+            logger.debug(
+                f"DatasetQuality scores: doc={doc_score}, license={lic_score}, "
+                f"freshness={fresh_score}, community={comm_score}, "
+                f"example_code={ex_score}, final={self.value}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing DatasetQuality metric: {e}")
+            self.value = 0.0
+            self.latency_ms = int(round((time.time() - start) * 1000))
+            self.details = {"error": str(e)}

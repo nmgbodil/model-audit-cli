@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, cast
 import requests
 from dotenv import load_dotenv
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 from model_audit_cli.resources.base_resource import _BaseResource
@@ -90,48 +91,60 @@ class DatasetAndCode(Metric):
 
     def compute(self, model: Model) -> None:
         """Populate value/latency/details from model+code READMEs."""
+        logger.info("Computing DatasetAndCode metric...")
         t0 = time.perf_counter()
-        details: Dict[str, Any] = {}
-        scores: list[float] = []
+        try:
+            details: Dict[str, Any] = {}
+            scores: list[float] = []
 
-        # Model README
-        model_text: Optional[str] = None
-        if model.model is not None:
-            model_text = try_readme(model.model)
+            # Model README
+            model_text: Optional[str] = None
+            if model.model is not None:
+                model_text = try_readme(model.model)
 
-        if model_text:
-            r_model = _query_genai(self._build_prompt(model_text))
-            scores.append(r_model.get("score", 0.0))
-            details["model"] = r_model
-        else:
-            scores.append(0.0)
-            details["model"] = {
-                "score": 0.0,
-                "justification": "README not found",
-            }
+            if model_text:
+                r_model = _query_genai(self._build_prompt(model_text))
+                scores.append(r_model.get("score", 0.0))
+                details["model"] = r_model
+            else:
+                scores.append(0.0)
+                details["model"] = {
+                    "score": 0.0,
+                    "justification": "README not found",
+                }
 
-        # Code README
-        code_text: Optional[str] = None
-        if model.code is not None:
-            code_text = try_readme(model.code)
+            # Code README
+            code_text: Optional[str] = None
+            if model.code is not None:
+                code_text = try_readme(model.code)
 
-        if code_text:
-            r_code = _query_genai(self._build_prompt(code_text))
-            scores.append(r_code.get("score", 0.0))
-            details["code"] = r_code
-        else:
-            scores.append(0.0)
-            details["code"] = {
-                "score": 0.0,
-                "justification": "README not found",
-            }
+            if code_text:
+                r_code = _query_genai(self._build_prompt(code_text))
+                scores.append(r_code.get("score", 0.0))
+                details["code"] = r_code
+            else:
+                scores.append(0.0)
+                details["code"] = {
+                    "score": 0.0,
+                    "justification": "README not found",
+                }
 
-        if all(s == 0.0 for s in scores):
+            if all(s == 0.0 for s in scores):
+                self.value = 0.0
+            elif all(s >= 0.9 for s in scores):
+                self.value = 1.0
+            else:
+                self.value = sum(scores) / len(scores)
+
+            self.latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.details = details
+
+            logger.debug(
+                f"DatasetAndCode results: model_score={details.get('model')}, "
+                f"code_score={details.get('code')}, final={self.value}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing DatasetAndCode metric: {e}")
             self.value = 0.0
-        elif all(s >= 0.9 for s in scores):
-            self.value = 1.0
-        else:
-            self.value = sum(scores) / len(scores)
-
-        self.latency_ms = int((time.perf_counter() - t0) * 1000)
-        self.details = details
+            self.latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.details = {"error": str(e)}

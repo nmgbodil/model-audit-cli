@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, cast
 import requests
 from dotenv import load_dotenv
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 from model_audit_cli.resources.base_resource import _BaseResource
@@ -113,30 +114,43 @@ class Performance(Metric):
 
     def compute(self, model: Model) -> None:
         """Populate value/latency/details on this instance."""
+        logger.info("Computing Performance metric...")
         t0 = time.perf_counter()
-        readmes = self._extract_readmes(model)
+        try:
+            readmes = self._extract_readmes(model)
 
-        details: Dict[str, Any] = {}
-        scores: list[float] = []
+            details: Dict[str, Any] = {}
+            scores: list[float] = []
 
-        for key, text in readmes.items():
-            if text:
-                result = _query_genai(self._build_prompt(text))
-                scores.append(result.get("score", 0.0))
-                details[key] = result
+            for key, text in readmes.items():
+                if text:
+                    result = _query_genai(self._build_prompt(text))
+                    scores.append(result.get("score", 0.0))
+                    details[key] = result
+                else:
+                    scores.append(0.0)
+                    details[key] = {
+                        "score": 0.0,
+                        "justification": "README not found",
+                    }
+                    logger.warning(f"No README found for {key} in Performance metric")
+
+            if all(s == 0.0 for s in scores):
+                self.value = 0.0
+            elif all(s >= 0.9 for s in scores):
+                self.value = 1.0
             else:
-                scores.append(0.0)
-                details[key] = {
-                    "score": 0.0,
-                    "justification": "README not found",
-                }
+                self.value = sum(scores) / len(scores)
 
-        if all(s == 0.0 for s in scores):
+            self.latency_ms = int(round((time.perf_counter() - t0) * 1000))
+            self.details = details
+
+            logger.debug(
+                f"Performance details: model={details.get('model')}, "
+                f"code={details.get('code')}, final={self.value}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing Performance metric: {e}")
             self.value = 0.0
-        elif all(s >= 0.9 for s in scores):
-            self.value = 1.0
-        else:
-            self.value = sum(scores) / len(scores)
-
-        self.latency_ms = int(round((time.perf_counter() - t0) * 1000))
-        self.details = details
+            self.latency_ms = int(round((time.perf_counter() - t0) * 1000))
+            self.details = {"error": str(e)}

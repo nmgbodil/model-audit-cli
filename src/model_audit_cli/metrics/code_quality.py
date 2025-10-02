@@ -6,6 +6,7 @@ from typing import Any
 
 from model_audit_cli.adapters.code_fetchers import open_codebase
 from model_audit_cli.adapters.repo_view import RepoView
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 from model_audit_cli.resources.code_resource import CodeResource
@@ -66,28 +67,39 @@ class CodeQuality(Metric):
 
     def compute(self, model: Model) -> None:
         """Run code quality analysis on the model's code URL."""
+        logger.info("Computing Code Quality metric...")
         start: float = time.perf_counter()
+        try:
+            # If your Model is a dict-like, .get() is valid.
+            url: str | None = model.code.url if model.code else None
+            if not url:
+                self.value = 0.0
+                self.latency_ms = int(round((time.perf_counter() - start) * 1000))
+                self.details = {"error": "No code URL provided"}
+                logger.warning("No code URL provided for Code Quality metric")
+                return None
 
-        # If your Model is a dict-like, .get() is valid.
-        url: str | None = model.code.url if model.code else None
-        if not url:
+            with open_codebase(url) as repo:
+                flake8: float = self._flake8_score(repo)
+                mypy: float = self._mypy_score(repo)
+
+            stars: float = self._stars_score(url)
+            score: float = (flake8 + mypy + stars) / 3.0
+
+            self.value = score
+            self.latency_ms = int(round((time.perf_counter() - start) * 1000))
+            self.details = {
+                "flake8": flake8,
+                "mypy": mypy,
+                "stars": stars,
+            }
+
+            logger.debug(
+                f"Code Quality scores for {url}: flake8={flake8}, "
+                f"mypy={mypy}, stars={stars}, final={score}"
+            )
+        except Exception as e:
+            logger.error(f"Error computing Code Quality: {e}")
             self.value = 0.0
             self.latency_ms = int(round((time.perf_counter() - start) * 1000))
-            self.details = {"error": "No code URL provided"}
-            return None
-
-        with open_codebase(url) as repo:
-            flake8: float = self._flake8_score(repo)
-            mypy: float = self._mypy_score(repo)
-
-        stars: float = self._stars_score(url)
-        score: float = (flake8 + mypy + stars) / 3.0
-
-        self.value = score
-        self.latency_ms = int(round((time.perf_counter() - start) * 1000))
-        self.details = {
-            "flake8": flake8,
-            "mypy": mypy,
-            "stars": stars,
-        }
-        return None
+            self.details = {"error": str(e)}

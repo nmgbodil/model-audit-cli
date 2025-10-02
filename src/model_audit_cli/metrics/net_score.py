@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import statistics
+import time
 from typing import Dict, Optional
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 
 # Metric weights based on Sarah's priorities
@@ -14,7 +16,7 @@ METRIC_WEIGHTS: Dict[str, float] = {
     "dataset_quality": 0.10,
     "code_quality": 0.10,
     "performance_claims": 0.10,
-    "size_score": 0.10,
+    "size": 0.10,
 }
 
 
@@ -30,21 +32,38 @@ class NetScore(Metric):
         """Run all metrics, aggregate results, and compute weighted net score.
 
         Args:
-            urls: Dict with optional URLs for "model" and "code".
+            metrics: List of Metric objects to include in the weighted score.
 
         Returns:
-            Dict with individual metric values, latencies, and net_score fields.
+            None
         """
-        self.value = 0
+        logger.info("Computing NetScore...")
+        start = time.perf_counter()
+        try:
+            self.value = 0.0
+            for metric in metrics:
+                if metric.name == "size" and isinstance(metric.value, dict):
+                    avg_size = statistics.mean(metric.value.values())
+                    self.value += METRIC_WEIGHTS[metric.name] * avg_size
+                    logger.debug(
+                        f"Including size_score: avg={avg_size:.3f}, "
+                        f"weight={METRIC_WEIGHTS[metric.name]}"
+                    )
+                elif isinstance(metric.value, float):
+                    self.value += METRIC_WEIGHTS.get(metric.name, 0.0) * metric.value
+                    logger.debug(
+                        f"Including {metric.name}: value={metric.value:.3f}, "
+                        f"weight={METRIC_WEIGHTS.get(metric.name, 0.0)}"
+                    )
 
-        for metric in metrics:
-            if metric.name == "size_score" and isinstance(metric.value, dict):
-                self.value += METRIC_WEIGHTS[metric.name] * statistics.mean(
-                    metric.value.values()
-                )
-                continue
-            if isinstance(metric.value, float):
-                self.value += METRIC_WEIGHTS[metric.name] * metric.value
+            self.latency_ms = int(round((time.perf_counter() - start) * 1000))
+            logger.debug(
+                f"Final NetScore={self.value:.3f}, latency={self.latency_ms}ms"
+            )
+        except Exception as e:
+            logger.error(f"Error computing NetScore: {e}")
+            self.value = 0.0
+            self.latency_ms = int(round((time.perf_counter() - start) * 1000))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, cast
 import requests
 from dotenv import load_dotenv
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 from model_audit_cli.resources.base_resource import _BaseResource
@@ -89,19 +90,28 @@ class License(Metric):
 
     def compute(self, model: Model) -> None:
         """Populate value/latency/details using only the model README."""
+        logger.info("Computing License metric...")
         t0 = time.perf_counter()
-        readme: Optional[str] = None
-        if model.model is not None:
-            readme = try_readme(model.model)
+        try:
+            readme: Optional[str] = None
+            if model.model is not None:
+                readme = try_readme(model.model)
 
-        if readme:
-            result = _query_genai(self._build_prompt(readme))
-            self.value = float(result.get("score", 0.0))
-            self.details = {"model": result}
-        else:
+            if readme:
+                result = _query_genai(self._build_prompt(readme))
+                self.value = float(result.get("score", 0.0))
+                self.details = {"model": result}
+            else:
+                self.value = 0.0
+                self.details = {
+                    "model": {"score": 0.0, "justification": "README not found"}
+                }
+                logger.warning("No README found for License metric")
+
+            self.latency_ms = int((time.perf_counter() - t0) * 1000)
+            logger.debug(f"License details: {self.details}, final={self.value}")
+        except Exception as e:
+            logger.error(f"Error computing License metric: {e}")
             self.value = 0.0
-            self.details = {
-                "model": {"score": 0.0, "justification": "README not found"}
-            }
-
-        self.latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.latency_ms = int((time.perf_counter() - t0) * 1000)
+            self.details = {"error": str(e)}

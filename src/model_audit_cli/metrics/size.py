@@ -1,5 +1,6 @@
 import time
 
+from model_audit_cli.log import logger
 from model_audit_cli.metrics.base_metric import Metric
 from model_audit_cli.models import Model
 
@@ -42,24 +43,26 @@ class Size(Metric):
             - size_score: SizeScore object with scores for each device
             - latency_ms: Computation time in milliseconds
         """
+        logger.info("Computing Size metric...")
         t0 = time.time() * 1000
-
-        with model.model.open_files() as repo:
-            size_bytes = 0
-            for pattern in MODEL_PATTERNS:
-                files = list(repo.glob(pattern))
-                for file in files:
-                    # Convert Path to relative string for size_bytes method
-                    relative_path = str(file.relative_to(repo.root))
-                    size_bytes += repo.size_bytes(relative_path)
-
-        scores = {
-            dev: self.smoothstep_score(size_bytes, cap)
-            for dev, cap in DEVICE_BUDGETS.items()
-        }
-        self.value = scores
-        t1 = time.time() * 1000
-        self.latency_ms = int(round(t1 - t0))
+        try:
+            with model.model.open_files() as repo:
+                size_bytes = 0
+                for pattern in MODEL_PATTERNS:
+                    files = list(repo.glob(pattern))
+                    for file in files:
+                        relative_path = str(file.relative_to(repo.root))
+                        size_bytes += repo.size_bytes(relative_path)
+            scores = {
+                dev: self.smoothstep_score(size_bytes, cap)
+                for dev, cap in DEVICE_BUDGETS.items()
+            }
+            self.value = scores
+            t1 = time.time() * 1000
+            self.latency_ms = int(round(t1 - t0))
+            logger.debug(f"Size bytes={size_bytes}, scores={scores}")
+        except Exception as e:
+            logger.error(f"Error computing Size metric: {e}")
 
     def smoothstep_score(
         self, size_bytes: float, cap_bytes: float, a: float = 0.25, b: float = 1.50

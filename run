@@ -51,7 +51,7 @@ def _run_pytest() -> int:
         f"--cov-report=xml:{cov}",
         "-q",
     ]
-    print("[test] running:", " ".join(cmd), file=sys.stderr())
+    print("[test] running:", " ".join(cmd))
     return subprocess.run(cmd, check=False).returncode
 
 def _print_summary(pytest_rc: int) -> None:
